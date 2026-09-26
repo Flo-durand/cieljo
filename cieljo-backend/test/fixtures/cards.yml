@@ -1,0 +1,19 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  game: one
+  player: one
+  value: 1
+  row: 1
+  column: 1
+  location: MyString
+  is_face_up: false
+
+two:
+  game: two
+  player: two
+  value: 1
+  row: 1
+  column: 1
+  location: MyString
+  is_face_up: false

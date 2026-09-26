@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  status: MyString
+  room_code: MyString
+  current_player_id: 1
+  turn_number: 1
+
+two:
+  status: MyString
+  room_code: MyString
+  current_player_id: 1
+  turn_number: 1
