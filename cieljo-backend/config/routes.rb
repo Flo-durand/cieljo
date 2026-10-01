@@ -2,11 +2,18 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       root to: "home#index"
-      
+
+      # Routes d'inscription/déconnexion Devise standards
       devise_for :users, controllers: {
         sessions: 'api/v1/users/sessions',
         registrations: 'api/v1/users/registrations'
       }, defaults: { format: :json }
+
+      # --- NOTRE NOUVELLE ROUTE TOTALEMENT LIBRE ---
+      post 'auth/login', to: 'auth#login', defaults: { format: :json }
+
+      # --- LA ROUTE POUR LA CRÉATION DE PARTIE ---
+      resources :games, only: [:create]
     end
   end
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html

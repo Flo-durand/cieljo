@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_26_064236) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_28_080958) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -48,7 +48,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_26_064236) do
     t.bigint "game_id", null: false
     t.boolean "is_face_up", default: false, null: false
     t.string "location", null: false
-    t.bigint "player_id", null: false
+    t.bigint "player_id"
     t.integer "row"
     t.datetime "updated_at", null: false
     t.integer "value", null: false

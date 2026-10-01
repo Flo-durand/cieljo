@@ -6,6 +6,10 @@ class User < ApplicationRecord
          :recoverable, :rememberable, :validatable,
          :jwt_authenticatable, jwt_revocation_strategy: self
 
+  def jwt_payload
+    super.merge('jti' => self.jti)
+  end
+  
   # Génère automatiquement un JTI à la création de l'utilisateur
   before_create :generate_jti
 
