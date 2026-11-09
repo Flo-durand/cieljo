@@ -1,7 +1,9 @@
 class Game < ApplicationRecord
+  # Cards must be deleted BEFORE players: cards.player_id has a foreign key to players.
+  # delete_all removes the whole deck in one SQL query (Card has no callbacks).
+  has_many :cards, dependent: :delete_all
   has_many :players, dependent: :destroy
   has_many :users, through: :players
-  has_many :cards, dependent: :destroy
   has_many :invitations, dependent: :destroy
 
   # Points to the active player
