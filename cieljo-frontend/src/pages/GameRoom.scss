@@ -57,6 +57,16 @@
     color: $color-success;
   }
 
+  &__you {
+    font-size: 14px;
+    color: $color-text-muted;
+  }
+
+  &__error {
+    color: $color-danger;
+    font-weight: bold;
+  }
+
   &__actions {
     margin-top: 30px;
   }

@@ -13,7 +13,8 @@ Rails.application.routes.draw do
       post 'auth/login', to: 'auth#login', defaults: { format: :json }
 
       # --- Game routes ---
-      resources :games, only: [:create] do
+      # GET /api/v1/games/:room_code returns the game and its players
+      resources :games, only: [ :create, :show ], param: :room_code do
         # POST /api/v1/games/join with { room_code }
         post :join, on: :collection
       end

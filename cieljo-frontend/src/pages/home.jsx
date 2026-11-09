@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_URL, authHeaders } from '../api';
 import './Home.scss';
-
-const API_URL = 'http://localhost:3000/api/v1';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -17,13 +16,6 @@ export default function Home() {
   // Join game form
   const [showJoinForm, setShowJoinForm] = useState(false);
   const [roomCode, setRoomCode] = useState('');
-
-  const authHeaders = () => ({
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    // Safety: make sure the token starts with "Bearer " (JWT is required)
-    'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`
-  });
 
   const handleCreateGame = async () => {
     try {

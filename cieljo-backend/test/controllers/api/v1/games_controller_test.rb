@@ -54,6 +54,30 @@ class Api::V1::GamesControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
   end
 
+  test "shows the room with its players ordered by turn" do
+    join("ABCD", users(:two))
+
+    get api_v1_game_url("abcd"), headers: auth_headers(users(:two)), as: :json
+
+    assert_response :ok
+    players = response.parsed_body.dig("data", "players")
+    assert_equal %w[player_one player_two], players.map { |p| p["username"] }
+    assert_equal [ true, false ], players.map { |p| p["host"] }
+    assert_equal [ false, true ], players.map { |p| p["current_user"] }
+  end
+
+  test "hides the room from users who are not players" do
+    get api_v1_game_url("ABCD"), headers: auth_headers(users(:two)), as: :json
+
+    assert_response :forbidden
+  end
+
+  test "returns 404 when showing an unknown room" do
+    get api_v1_game_url("ZZZZ"), headers: auth_headers(users(:one)), as: :json
+
+    assert_response :not_found
+  end
+
   test "requires authentication" do
     post join_api_v1_games_url, params: { room_code: "ABCD" }, as: :json
 

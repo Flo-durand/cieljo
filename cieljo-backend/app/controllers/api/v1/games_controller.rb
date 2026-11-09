@@ -1,5 +1,37 @@
 class Api::V1::GamesController < ApplicationController
 
+  def show
+    game = Game.find_by(room_code: params[:room_code].to_s.strip.upcase)
+
+    unless game
+      return render json: { error: "No game found with this code." }, status: :not_found
+    end
+
+    # Only the players of a game can see its room
+    unless game.players.exists?(user: current_user)
+      return render json: { error: "You are not a player of this game." }, status: :forbidden
+    end
+
+    players = game.players.includes(:user).order(:turn_order)
+
+    render json: {
+      data: {
+        game_id: game.id,
+        room_code: game.room_code,
+        status: game.status,
+        players: players.map do |player|
+          {
+            id: player.id,
+            username: player.user.username,
+            turn_order: player.turn_order,
+            host: player.turn_order == 1,
+            current_user: player.user_id == current_user.id
+          }
+        end
+      }
+    }, status: :ok
+  end
+
   def create
     @game = Game.new(status: 'pending', turn_number: 1)
 
