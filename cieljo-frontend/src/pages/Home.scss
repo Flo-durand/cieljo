@@ -50,4 +50,22 @@
       margin-right: 10px;
     }
   }
+
+  &__join-form {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  &__join-input {
+    width: 160px;
+    padding: 8px;
+    font-size: 16px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    border: 1px solid $color-border;
+    border-radius: $radius-sm;
+  }
 }

@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_URL, authHeaders } from '../api';
 import './Home.scss';
-
-const API_URL = 'http://localhost:3000/api/v1';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -14,19 +13,15 @@ export default function Home() {
   // Single 'message' state for all user feedback
   const [message, setMessage] = useState('');
 
+  // Join game form
+  const [showJoinForm, setShowJoinForm] = useState(false);
+  const [roomCode, setRoomCode] = useState('');
+
   const handleCreateGame = async () => {
     try {
-    // Safety: make sure the token starts with "Bearer "
-    const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
-
-
       const response = await fetch(`${API_URL}/games`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': authToken // JWT is required
-        }
+        headers: authHeaders()
       });
 
       const data = await response.json();
@@ -36,6 +31,35 @@ export default function Home() {
         navigate(`/game/${data.data.room_code}`); // Redirect to the game room
       } else {
         setMessage("Error while creating the game.");
+      }
+    } catch (error) {
+      setMessage(`Could not reach the backend server. Details: ${error.message || error}`);
+    }
+  };
+
+  const handleToggleJoinForm = () => {
+    setShowJoinForm(!showJoinForm);
+    setRoomCode('');
+    setMessage('');
+  };
+
+  const handleJoinGame = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(`${API_URL}/games/join`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ room_code: roomCode.trim() })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage('');
+        navigate(`/game/${data.data.room_code}`);
+      } else {
+        // The API explains why: unknown code, already in the game, game already started...
+        setMessage(data.error || "Could not join the game.");
       }
     } catch (error) {
       setMessage(`Could not reach the backend server. Details: ${error.message || error}`);
@@ -89,9 +113,27 @@ export default function Home() {
               Create a game
             </button>
 
-            <button className="btn btn--info home__action">
-              Join a game
+            <button onClick={handleToggleJoinForm} className="btn btn--info home__action">
+              {showJoinForm ? 'Cancel' : 'Join a game'}
             </button>
+
+            {showJoinForm && (
+              <form onSubmit={handleJoinGame} className="home__join-form">
+                <input
+                  type="text"
+                  placeholder="Room code (e.g. XF4G)"
+                  value={roomCode}
+                  onChange={e => setRoomCode(e.target.value.toUpperCase())}
+                  maxLength={4}
+                  required
+                  autoFocus
+                  className="home__join-input"
+                />
+                <button type="submit" className="btn btn--success home__action">
+                  Join
+                </button>
+              </form>
+            )}
           </div>
 
           <button onClick={handleLogout} className="btn btn--danger">
