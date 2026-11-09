@@ -1,13 +1,11 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  status: MyString
-  room_code: MyString
-  current_player_id: 1
+  status: pending
+  room_code: ABCD
   turn_number: 1
 
 two:
-  status: MyString
-  room_code: MyString
-  current_player_id: 1
+  status: in_progress
+  room_code: WXYZ
   turn_number: 1
