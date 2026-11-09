@@ -1,0 +1,16 @@
+@use 'variables' as *;
+
+// Light grey box with a dashed border, used for "game actions" panels
+@mixin dashed-panel($padding, $radius) {
+  padding: $padding;
+  border: 1px dashed $color-border;
+  border-radius: $radius;
+  background-color: $color-bg-light;
+}
+
+// Light grey box with a solid border
+@mixin card($padding: 20px) {
+  padding: $padding;
+  border: 1px solid $color-border;
+  border-radius: $radius-lg;
+}

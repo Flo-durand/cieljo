@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import './Auth.scss';
 
 const API_URL = 'http://localhost:3000/api/v1';
 
@@ -60,30 +61,30 @@ export default function Auth() {
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '8px', fontFamily: 'sans-serif' }}>
-      <Link to="/" style={{ textDecoration: 'none', color: '#007BFF' }}>← Back to home</Link>
+    <div className="auth">
+      <Link to="/" className="auth__back">← Back to home</Link>
 
       <h2>{isLoginMode ? "Log in" : "Create an account"}</h2>
 
-      {message && <p style={{ color: 'red' }}>{message}</p>}
+      {message && <p className="auth__message">{message}</p>}
 
       {isLoginMode ? (
         <form onSubmit={handleLogin}>
-          <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required style={{ width: '100%', padding: '8px', marginBottom: '10px', boxSizing: 'border-box' }} /><br/>
-          <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: '8px', marginBottom: '20px', boxSizing: 'border-box' }} /><br/>
-          <button type="submit" style={{ width: '100%', padding: '10px', backgroundColor: '#28a745', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Log in</button>
-          <p style={{ textAlign: 'center', marginTop: '15px' }}>
-            New to Cieljo? <span onClick={() => { setIsLoginMode(false); setMessage(''); }} style={{ color: '#007BFF', cursor: 'pointer' }}>Create an account here</span>
+          <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required className="auth__input" /><br/>
+          <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className="auth__input" /><br/>
+          <button type="submit" className="btn btn--success auth__submit">Log in</button>
+          <p className="auth__switch">
+            New to Cieljo? <span onClick={() => { setIsLoginMode(false); setMessage(''); }} className="auth__switch-link">Create an account here</span>
           </p>
         </form>
       ) : (
         <form onSubmit={handleRegister}>
-          <input type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} required style={{ width: '100%', padding: '8px', marginBottom: '10px', boxSizing: 'border-box' }} /><br/>
-          <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required style={{ width: '100%', padding: '8px', marginBottom: '10px', boxSizing: 'border-box' }} /><br/>
-          <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: '8px', marginBottom: '20px', boxSizing: 'border-box' }} /><br/>
-          <button type="submit" style={{ width: '100%', padding: '10px', backgroundColor: '#007BFF', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Sign up</button>
-          <p style={{ textAlign: 'center', marginTop: '15px' }}>
-            Already have an account? <span onClick={() => { setIsLoginMode(true); setMessage(''); }} style={{ color: '#007BFF', cursor: 'pointer' }}>Log in here</span>
+          <input type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} required className="auth__input" /><br/>
+          <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required className="auth__input" /><br/>
+          <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className="auth__input" /><br/>
+          <button type="submit" className="btn btn--primary auth__submit">Sign up</button>
+          <p className="auth__switch">
+            Already have an account? <span onClick={() => { setIsLoginMode(true); setMessage(''); }} className="auth__switch-link">Log in here</span>
           </p>
         </form>
       )}
