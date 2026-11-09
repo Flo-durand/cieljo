@@ -36,6 +36,9 @@ export default function GameRoom() {
     return () => clearInterval(intervalId);
   }, [room_code]);
 
+  // Only the host can start the game
+  const isHost = players.some(player => player.host && player.current_user);
+
   const handleLeaveGame = () => {
     // Later, notify the Rails backend through the API or ActionCable
     navigate('/');
@@ -82,12 +85,18 @@ export default function GameRoom() {
       </div>
 
       <div className="game-room__actions">
-        <button
-          className="btn btn--success game-room__start"
-          disabled
-        >
-          Start the game (requires at least 2 players)
-        </button>
+        {isHost ? (
+          <button
+            className="btn btn--success game-room__start"
+            disabled
+          >
+            Start the game (requires at least 2 players)
+          </button>
+        ) : (
+          players.length > 0 && (
+            <p className="game-room__hint">Waiting for the host to start the game...</p>
+          )
+        )}
       </div>
     </div>
   );
