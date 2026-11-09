@@ -27,7 +27,9 @@ export default function Auth() {
         setMessage("Account created successfully! You can now log in.");
         setIsLoginMode(true);
       } else {
-        setMessage(`Failed: ${data.status.errors.join(', ')}`);
+        // Validation errors come in status.errors, auth errors in error
+        const errors = data.status?.errors?.join(', ') || data.error || 'Sign-up failed.';
+        setMessage(`Failed: ${errors}`);
       }
     } catch (error) {
       setMessage(`Network error during sign-up: ${error}`);

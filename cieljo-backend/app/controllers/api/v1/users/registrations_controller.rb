@@ -2,6 +2,9 @@ class Api::V1::Users::RegistrationsController < Devise::RegistrationsController
   include RackSessionFix
   respond_to :json
 
+  # ApplicationController requires a JWT on every action: signing up must stay public
+  skip_before_action :authenticate_user!, only: [ :create ]
+
   private
 
   # Override Devise's method to skip the cookie-based sign-in.
