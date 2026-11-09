@@ -12,7 +12,7 @@ class Api::V1::GamesController < ApplicationController
         GameInitializerService.new(@game).call
 
         render json: {
-          status: { code: 200, message: "Salon de jeu créé et deck initialisé." },
+          status: { code: 200, message: "Game room created and deck initialized." },
           data: {
             game_id: @game.id,
             room_code: @game.room_code,
@@ -21,10 +21,10 @@ class Api::V1::GamesController < ApplicationController
           }
         }, status: :created
       else
-        render json: { error: "Impossible d'associer le joueur." }, status: :unprocessable_entity
+        render json: { error: "Could not add the player to the game." }, status: :unprocessable_entity
       end
     else
-      render json: { error: "Impossible de générer le salon." }, status: :unprocessable_entity
+      render json: { error: "Could not create the game room." }, status: :unprocessable_entity
     end
   end
 end

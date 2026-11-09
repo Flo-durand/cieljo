@@ -23,13 +23,13 @@ export default function Auth() {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage("Compte créé avec succès ! Vous pouvez vous connecter.");
+        setMessage("Account created successfully! You can now log in.");
         setIsLoginMode(true);
       } else {
-        setMessage(`Échec : ${data.status.errors.join(', ')}`);
+        setMessage(`Failed: ${data.status.errors.join(', ')}`);
       }
     } catch (error) {
-      setMessage(`Erreur réseau lors de l'inscription: ${error}`);
+      setMessage(`Network error during sign-up: ${error}`);
     }
   };
 
@@ -52,38 +52,38 @@ export default function Auth() {
           navigate('/');
         }
       } else {
-        setMessage(`Échec de la connexion : ${data.error || "Identifiants incorrects."}`);
+        setMessage(`Login failed: ${data.error || "Invalid credentials."}`);
       }
     } catch (error) {
-      setMessage(`Erreur réseau lors de la connexion: ${error}`);
+      setMessage(`Network error during login: ${error}`);
     }
   };
 
   return (
     <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '8px', fontFamily: 'sans-serif' }}>
-      <Link to="/" style={{ textDecoration: 'none', color: '#007BFF' }}>← Retour à l'accueil</Link>
+      <Link to="/" style={{ textDecoration: 'none', color: '#007BFF' }}>← Back to home</Link>
 
-      <h2>{isLoginMode ? "Connexion" : "Créer un compte"}</h2>
+      <h2>{isLoginMode ? "Log in" : "Create an account"}</h2>
 
       {message && <p style={{ color: 'red' }}>{message}</p>}
 
       {isLoginMode ? (
         <form onSubmit={handleLogin}>
           <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required style={{ width: '100%', padding: '8px', marginBottom: '10px', boxSizing: 'border-box' }} /><br/>
-          <input type="password" placeholder="Mot de passe" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: '8px', marginBottom: '20px', boxSizing: 'border-box' }} /><br/>
-          <button type="submit" style={{ width: '100%', padding: '10px', backgroundColor: '#28a745', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Se connecter</button>
+          <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: '8px', marginBottom: '20px', boxSizing: 'border-box' }} /><br/>
+          <button type="submit" style={{ width: '100%', padding: '10px', backgroundColor: '#28a745', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Log in</button>
           <p style={{ textAlign: 'center', marginTop: '15px' }}>
-            Nouveau sur Cieljo ? <span onClick={() => { setIsLoginMode(false); setMessage(''); }} style={{ color: '#007BFF', cursor: 'pointer' }}>Créez un compte ici</span>
+            New to Cieljo? <span onClick={() => { setIsLoginMode(false); setMessage(''); }} style={{ color: '#007BFF', cursor: 'pointer' }}>Create an account here</span>
           </p>
         </form>
       ) : (
         <form onSubmit={handleRegister}>
-          <input type="text" placeholder="Pseudo" value={username} onChange={e => setUsername(e.target.value)} required style={{ width: '100%', padding: '8px', marginBottom: '10px', boxSizing: 'border-box' }} /><br/>
+          <input type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} required style={{ width: '100%', padding: '8px', marginBottom: '10px', boxSizing: 'border-box' }} /><br/>
           <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required style={{ width: '100%', padding: '8px', marginBottom: '10px', boxSizing: 'border-box' }} /><br/>
-          <input type="password" placeholder="Mot de passe" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: '8px', marginBottom: '20px', boxSizing: 'border-box' }} /><br/>
-          <button type="submit" style={{ width: '100%', padding: '10px', backgroundColor: '#007BFF', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>S'inscrire</button>
+          <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: '8px', marginBottom: '20px', boxSizing: 'border-box' }} /><br/>
+          <button type="submit" style={{ width: '100%', padding: '10px', backgroundColor: '#007BFF', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Sign up</button>
           <p style={{ textAlign: 'center', marginTop: '15px' }}>
-            Déjà un compte ? <span onClick={() => { setIsLoginMode(true); setMessage(''); }} style={{ color: '#007BFF', cursor: 'pointer' }}>Connectez-vous ici</span>
+            Already have an account? <span onClick={() => { setIsLoginMode(true); setMessage(''); }} style={{ color: '#007BFF', cursor: 'pointer' }}>Log in here</span>
           </p>
         </form>
       )}

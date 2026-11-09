@@ -10,26 +10,26 @@ class User < ApplicationRecord
     super.merge('jti' => self.jti)
   end
   
-  # Génère automatiquement un JTI à la création de l'utilisateur
+  # Automatically generate a JTI when the user is created
   before_create :generate_jti
 
-  # 1. Gestion de l'Avatar (Active Storage)
+  # 1. Avatar (Active Storage)
   # has_one_attached :avatar
 
-  # 2. Gestion des Joueurs et des Parties
+  # 2. Players and games
   has_many :players, dependent: :destroy
   has_many :games, through: :players
 
-  # 3. Gestion de la liste d'amis (Auto-jointure)
-  # Les demandes d'amis que J'AI envoyées
+  # 3. Friends list (self-join)
+  # Friend requests I sent
   has_many :friendships, dependent: :destroy
   has_many :friends, through: :friendships
 
-  # Les demandes d'amis que J'AI reçues (l'inverse)
+  # Friend requests I received (the inverse)
   has_many :inverse_friendships, class_name: 'Friendship', foreign_key: 'friend_id', dependent: :destroy
   has_many :inverse_friends, through: :inverse_friendships, source: :user
 
-  # 4. Gestion des Invitations de jeu
+  # 4. Game invitations
   has_many :sent_invitations, class_name: 'Invitation', foreign_key: 'host_id', dependent: :destroy
   has_many :received_invitations, class_name: 'Invitation', foreign_key: 'guest_id', dependent: :destroy
 

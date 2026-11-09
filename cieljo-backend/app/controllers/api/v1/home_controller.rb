@@ -3,7 +3,7 @@ class Api::V1::HomeController < ApplicationController
   def index
     render json: {
       status: "online",
-      message: "Bienvenue sur l'API Cieljo. Le backend est prêt à recevoir les connexions de React !"
+      message: "Welcome to the Cieljo API. The backend is ready to accept connections from React!"
     }, status: :ok
   end
 end

@@ -6,16 +6,16 @@ const API_URL = 'http://localhost:3000/api/v1';
 export default function Home() {
   const navigate = useNavigate();
 
-  // Initialisation propre et directe à partir du localStorage
+  // Initialize directly from localStorage
   const [token, setToken] = useState(() => localStorage.getItem('token'));
   const [username, setUsername] = useState(() => localStorage.getItem('username'));
   console.log(token)
-  // Utilisation unique de 'message' pour centraliser les retours utilisateur
+  // Single 'message' state for all user feedback
   const [message, setMessage] = useState('');
 
   const handleCreateGame = async () => {
     try {
-    // Sécurité : On s'assure que le token commence bien par "Bearer "
+    // Safety: make sure the token starts with "Bearer "
     const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
 
 
@@ -24,20 +24,20 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Authorization': authToken // Envoi du Token JWT obligatoire
+          'Authorization': authToken // JWT is required
         }
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setMessage(''); // On nettoie les messages en cas de succès
-        navigate(`/game/${data.data.room_code}`); // Redirection flash vers le salon
+        setMessage(''); // Clear messages on success
+        navigate(`/game/${data.data.room_code}`); // Redirect to the game room
       } else {
-        setMessage("Erreur lors de la création de la partie.");
+        setMessage("Error while creating the game.");
       }
     } catch (error) {
-      setMessage(`Impossible de joindre le serveur backend. Détails : ${error.message || error}`);
+      setMessage(`Could not reach the backend server. Details: ${error.message || error}`);
     }
   };
 
@@ -52,49 +52,49 @@ export default function Home() {
 
   return (
     <div style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>
-      <h1>🃏 Bienvenue sur Cieljo</h1>
+      <h1>🃏 Welcome to Cieljo</h1>
 
-      {/* Affichage du message s'il y en a un (erreur d'authentification ou réseau) */}
+      {/* Show the message if there is one (auth or network error) */}
       {message && <p style={{ color: '#dc3545', fontWeight: 'bold' }}>{message}</p>}
 
       {!token ? (
         <div>
           <p style={{ fontSize: '18px', color: '#555' }}>
-            Le jeu de cartes stratégique et palpitant, directement dans votre navigateur.
+            The thrilling strategy card game, right in your browser.
           </p>
           <div style={{ marginTop: '30px' }}>
             <button
               onClick={() => navigate('/auth')}
               style={{ padding: '12px 24px', fontSize: '16px', cursor: 'pointer', borderRadius: '5px', backgroundColor: '#007BFF', color: '#fff', border: 'none' }}
             >
-              Rejoindre l'aventure (Connexion / Inscription)
+              Join the adventure (Log in / Sign up)
             </button>
           </div>
         </div>
       ) : (
         <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
           <p style={{ fontSize: '20px', color: '#28a745' }}>
-            Ravi de vous revoir, <strong>{username}</strong> ! 🟢
+            Welcome back, <strong>{username}</strong>! 🟢
           </p>
 
           <div style={{ margin: '40px 0', padding: '30px', border: '1px dashed #ccc', borderRadius: '8px', backgroundColor: '#f9f9f9' }}>
-            <h3>🎮 Vos Actions de Jeu</h3>
-            <p>Le salon est prêt. Vous pouvez maintenant créer ou rejoindre une table de Skyjo.</p>
+            <h3>🎮 Game actions</h3>
+            <p>The lobby is ready. You can now create or join a Skyjo table.</p>
 
             <button
               onClick={handleCreateGame}
               style={{ padding: '10px 20px', fontSize: '15px', backgroundColor: '#28a745', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', marginRight: '10px' }}
             >
-              Créer une partie
+              Create a game
             </button>
 
             <button style={{ padding: '10px 20px', fontSize: '15px', backgroundColor: '#17a2b8', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
-              Rejoindre une partie
+              Join a game
             </button>
           </div>
 
           <button onClick={handleLogout} style={{ padding: '8px 16px', backgroundColor: '#dc3545', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-            Se déconnecter
+            Log out
           </button>
         </div>
       )}

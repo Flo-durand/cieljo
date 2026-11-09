@@ -4,17 +4,17 @@ class Api::V1::Users::RegistrationsController < Devise::RegistrationsController
 
   private
 
-  # On surcharge la méthode de Devise pour éviter la tentative de connexion par cookie.
-  # On retourne simplement true sans appeler d'autres méthodes de navigation.
+  # Override Devise's method to skip the cookie-based sign-in.
+  # Just return true without calling any other navigation methods.
   def sign_up(resource_name, resource)
     true
   end
 
-  # Formatage de la réponse JSON envoyée à React
+  # Format the JSON response sent to React
   def respond_with(resource, _opts = {})
     if resource.persisted?
       render json: {
-        status: { code: 200, message: "Inscription réussie." },
+        status: { code: 200, message: "Signed up successfully." },
         data: {
           id: resource.id,
           email: resource.email,
@@ -23,12 +23,12 @@ class Api::V1::Users::RegistrationsController < Devise::RegistrationsController
       }, status: :ok
     else
       render json: {
-        status: { message: "L'inscription a échoué.", errors: resource.errors.full_messages }
+        status: { message: "Sign-up failed.", errors: resource.errors.full_messages }
       }, status: :unprocessable_entity
     end
   end
 
-  # Strong parameters pour l'API
+  # Strong parameters for the API
   def sign_up_params
     params.require(:user).permit(:email, :password, :username)
   end

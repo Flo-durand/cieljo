@@ -4,7 +4,7 @@ class GameInitializerService
   end
 
   def call
-    # On enveloppe le tout dans une transaction SQL pour des performances optimales et éviter les bugs
+    # Wrap everything in a SQL transaction for performance and consistency
     Card.transaction do
       generate_deck
     end
@@ -15,15 +15,15 @@ class GameInitializerService
   def generate_deck
     cards_to_create = []
 
-    # 1. Définition de la répartition exacte du Skyjo
+    # 1. Exact Skyjo card distribution
     distribution = {
       -2 => 5,
       -1 => 15
     }
-    # On ajoute 10 exemplaires pour chaque valeur de 1 à 12
+    # Add 10 copies of each value from 0 to 12
     (0..12).each { |v| distribution[v] = 10 }
 
-    # 2. Génération de la liste brute des cartes
+    # 2. Build the raw card list
     distribution.each do |value, count|
       count.times do
         cards_to_create << {
@@ -37,10 +37,10 @@ class GameInitializerService
       end
     end
 
-    # 3. Mélange aléatoire du deck (Algorithme natif de Ruby)
+    # 3. Shuffle the deck (Ruby's built-in shuffle)
     cards_to_create.shuffle!
 
-    # 4. Insertion en masse (Bulk Insert) dans PostgreSQL pour une vitesse maximale
+    # 4. Bulk insert into PostgreSQL for speed
     Card.insert_all!(cards_to_create)
   end
 end
