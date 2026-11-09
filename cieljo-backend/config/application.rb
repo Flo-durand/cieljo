@@ -10,7 +10,7 @@ module CieljoBackend
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 8.1
-    # 1. On active le support minimal des cookies et sessions requis par Devise
+    # 1. Enable the minimal cookie and session support Devise requires
     config.middleware.use ActionDispatch::Cookies
     config.middleware.use ActionDispatch::Session::CookieStore
 

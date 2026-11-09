@@ -10,7 +10,7 @@ class CreateFriendships < ActiveRecord::Migration[8.1]
 
     add_index :friendships, :friend_id
     
-    # Évite les doublons de demande d'ami entre deux mêmes personnes
+    # Prevent duplicate friend requests between the same two users
     add_index :friendships, [:user_id, :friend_id], unique: true
   end
 end

@@ -1,17 +1,17 @@
 class Api::V1::AuthController < ApplicationController
-  # Pas besoin de protection CSRF ou de filtres Devise ici
+  # No CSRF protection or Devise filters needed here
   skip_before_action :authenticate_user!, only: [:login]
   def login
-    # 1. Recherche de l'utilisateur en base
+    # 1. Look up the user
     user = User.find_by(email: params[:user][:email])
 
-    # 2. Vérification sécurisée du mot de passe crypté par Devise
+    # 2. Check the password against Devise's encrypted password
     if user && user.valid_password?(params[:user][:password])
-      # 3. Génération garantie du jeton JWT via la gem
+      # 3. Generate the JWT through the gem
       token, _payload = Warden::JWTAuth::UserEncoder.new.call(user, :user, nil)
 
       render json: {
-        status: { code: 200, message: "Connexion réussie." },
+        status: { code: 200, message: "Logged in successfully." },
         data: {
           id: user.id,
           email: user.email,
@@ -21,8 +21,8 @@ class Api::V1::AuthController < ApplicationController
       }, status: :ok
     else
       render json: {
-        status: { code: 401, message: "Échec de la connexion." },
-        error: "Email ou mot de passe incorrect."
+        status: { code: 401, message: "Login failed." },
+        error: "Invalid email or password."
       }, status: :unauthorized
     end
   end

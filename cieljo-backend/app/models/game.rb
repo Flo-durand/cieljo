@@ -4,13 +4,13 @@ class Game < ApplicationRecord
   has_many :cards, dependent: :destroy
   has_many :invitations, dependent: :destroy
 
-  # Permet de cibler le joueur actif
+  # Points to the active player
   belongs_to :current_player, class_name: 'Player', optional: true
 
   validates :room_code, presence: true, uniqueness: true
   validates :status, inclusion: { in: %w[pending in_progress finished] }
 
-  # Génère automatiquement un code de salon unique à 4 lettres avant de créer la partie
+  # Automatically generate a unique 4-character room code before creating the game
   before_validation :generate_room_code, on: :create
 
   private

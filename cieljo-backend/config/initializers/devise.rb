@@ -314,11 +314,11 @@ Devise.setup do |config|
   # changed. Defaults to true, so a user is signed in automatically after changing a password.
   # config.sign_in_after_change_password = true
 
-  # Configuration de devise-jwt
+  # devise-jwt configuration
   config.jwt do |jwt|
     jwt.secret = ENV['JWT_SECRET_KEY'] || Rails.application.credentials.jwt_secret_key
 
-    # On indique à Devise d'écouter et d'envoyer le token dans l'en-tête Authorization
+    # Tell Devise to read and send the token in the Authorization header
     jwt.dispatch_requests = [
       ['POST', %r{^/api/v1/users/sign_in$}]
     ]
@@ -326,7 +326,7 @@ Devise.setup do |config|
       ['DELETE', %r{^/api/v1/users/sign_out$}]
     ]
 
-    # Durée de validité du token (ex: 1 jour)
+    # Token lifetime (e.g. 1 day)
     jwt.expiration_time = 1.day.to_i
   end
 end
