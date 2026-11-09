@@ -1,0 +1,53 @@
+@use '../styles/variables' as *;
+@use '../styles/mixins' as *;
+
+.home {
+  margin-top: 50px;
+  text-align: center;
+
+  &__message {
+    color: $color-danger;
+    font-weight: bold;
+  }
+
+  &__intro {
+    font-size: 18px;
+    color: $color-text-soft;
+  }
+
+  &__cta-wrapper {
+    margin-top: 30px;
+  }
+
+  &__cta {
+    padding: 12px 24px;
+    font-size: 16px;
+    border-radius: $radius-md;
+  }
+
+  &__lobby {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  &__welcome {
+    font-size: 20px;
+    color: $color-success;
+  }
+
+  &__panel {
+    @include dashed-panel(30px, $radius-lg);
+    margin: 40px 0;
+  }
+
+  &__action {
+    padding: 10px 20px;
+    font-size: 15px;
+    border-radius: $radius-md;
+
+    &--spaced {
+      margin-right: 10px;
+    }
+  }
+}

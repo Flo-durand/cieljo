@@ -1,0 +1,27 @@
+@use 'variables' as *;
+
+body {
+  font-family: $font-family-base;
+}
+
+// Shared button: base + color modifiers (.btn--primary, .btn--success, ...)
+.btn {
+  padding: 8px 16px;
+  color: $color-white;
+  border: none;
+  border-radius: $radius-sm;
+  cursor: pointer;
+
+  $variants: (
+    primary: $color-primary,
+    success: $color-success,
+    danger: $color-danger,
+    info: $color-info,
+  );
+
+  @each $name, $color in $variants {
+    &--#{$name} {
+      background-color: $color;
+    }
+  }
+}

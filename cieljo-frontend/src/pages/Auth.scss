@@ -1,0 +1,44 @@
+@use '../styles/variables' as *;
+@use '../styles/mixins' as *;
+
+.auth {
+  @include card;
+  max-width: 400px;
+  margin: 50px auto;
+
+  &__back {
+    color: $color-primary;
+    text-decoration: none;
+  }
+
+  &__message {
+    color: red;
+  }
+
+  &__input {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+
+    // The password field is the last input of both forms
+    &:last-of-type {
+      margin-bottom: 20px;
+    }
+  }
+
+  &__submit {
+    width: 100%;
+    padding: 10px;
+  }
+
+  &__switch {
+    margin-top: 15px;
+    text-align: center;
+  }
+
+  &__switch-link {
+    color: $color-primary;
+    cursor: pointer;
+  }
+}

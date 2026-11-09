@@ -1,0 +1,15 @@
+@use '../styles/variables' as *;
+@use '../styles/mixins' as *;
+
+.dashboard {
+  padding: 20px;
+
+  &__panel {
+    @include dashed-panel(20px, $radius-md);
+    margin: 30px 0;
+  }
+
+  &__muted {
+    color: $color-text-muted;
+  }
+}
