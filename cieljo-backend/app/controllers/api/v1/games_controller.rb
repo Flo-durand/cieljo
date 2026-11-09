@@ -27,4 +27,40 @@ class Api::V1::GamesController < ApplicationController
       render json: { error: "Could not create the game room." }, status: :unprocessable_entity
     end
   end
+
+  def join
+    room_code = params[:room_code].to_s.strip.upcase
+    game = Game.find_by(room_code: room_code)
+
+    unless game
+      return render json: { error: "No game found with this code." }, status: :not_found
+    end
+
+    if game.players.exists?(user: current_user)
+      return render json: { error: "You are already in this game." }, status: :conflict
+    end
+
+    unless game.status == "pending"
+      return render json: { error: "This game has already started or is finished." }, status: :unprocessable_entity
+    end
+
+    player = game.players.new(user: current_user, score: 0, turn_order: game.players.count + 1)
+
+    if player.save
+      render json: {
+        status: { code: 200, message: "Joined the game." },
+        data: {
+          game_id: game.id,
+          room_code: game.room_code,
+          status: game.status,
+          turn_order: player.turn_order
+        }
+      }, status: :ok
+    else
+      render json: { error: player.errors.full_messages.to_sentence }, status: :unprocessable_entity
+    end
+  rescue ActiveRecord::RecordNotUnique
+    # Two simultaneous requests from the same user: the unique index wins
+    render json: { error: "You are already in this game." }, status: :conflict
+  end
 end

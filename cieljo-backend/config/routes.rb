@@ -12,8 +12,11 @@ Rails.application.routes.draw do
       # --- Custom login route (outside Devise) ---
       post 'auth/login', to: 'auth#login', defaults: { format: :json }
 
-      # --- Game creation route ---
-      resources :games, only: [:create]
+      # --- Game routes ---
+      resources :games, only: [:create] do
+        # POST /api/v1/games/join with { room_code }
+        post :join, on: :collection
+      end
     end
   end
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
