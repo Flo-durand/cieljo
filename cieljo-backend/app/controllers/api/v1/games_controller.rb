@@ -95,4 +95,30 @@ class Api::V1::GamesController < ApplicationController
     # Two simultaneous requests from the same user: the unique index wins
     render json: { error: "You are already in this game." }, status: :conflict
   end
+
+  def start
+    game = Game.find_by(room_code: params[:room_code].to_s.strip.upcase)
+
+    unless game
+      return render json: { error: "No game found with this code." }, status: :not_found
+    end
+
+    # The host is the player who created the game (turn order 1)
+    unless game.players.exists?(user: current_user, turn_order: 1)
+      return render json: { error: "Only the host can start the game." }, status: :forbidden
+    end
+
+    GameStarterService.new(game).call
+
+    render json: {
+      status: { code: 200, message: "Game started." },
+      data: {
+        game_id: game.id,
+        room_code: game.room_code,
+        status: game.status
+      }
+    }, status: :ok
+  rescue GameStarterService::Error => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
 end
