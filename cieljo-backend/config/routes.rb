@@ -17,6 +17,8 @@ Rails.application.routes.draw do
       resources :games, only: [ :create, :show ], param: :room_code do
         # POST /api/v1/games/join with { room_code }
         post :join, on: :collection
+        # POST /api/v1/games/:room_code/start (host only)
+        post :start, on: :member
       end
     end
   end

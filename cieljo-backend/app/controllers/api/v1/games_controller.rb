@@ -13,6 +13,7 @@ class Api::V1::GamesController < ApplicationController
     end
 
     players = game.players.includes(:user).order(:turn_order)
+    grids = game.cards.where(location: "player_grid").order(:row, :column).group_by(&:player_id)
 
     render json: {
       data: {
@@ -25,9 +26,13 @@ class Api::V1::GamesController < ApplicationController
             username: player.user.username,
             turn_order: player.turn_order,
             host: player.turn_order == 1,
-            current_user: player.user_id == current_user.id
+            current_user: player.user_id == current_user.id,
+            grid: (grids[player.id] || []).map { |card| card_json(card) }
           }
-        end
+        end,
+        draw_pile_count: game.cards.where(location: "draw_pile").count,
+        # The last card put on the discard pile is the visible one
+        discard_top: card_json(game.cards.where(location: "discard_pile").order(:updated_at, :id).last)
       }
     }, status: :ok
   end
@@ -94,5 +99,46 @@ class Api::V1::GamesController < ApplicationController
   rescue ActiveRecord::RecordNotUnique
     # Two simultaneous requests from the same user: the unique index wins
     render json: { error: "You are already in this game." }, status: :conflict
+  end
+
+  def start
+    game = Game.find_by(room_code: params[:room_code].to_s.strip.upcase)
+
+    unless game
+      return render json: { error: "No game found with this code." }, status: :not_found
+    end
+
+    # The host is the player who created the game (turn order 1)
+    unless game.players.exists?(user: current_user, turn_order: 1)
+      return render json: { error: "Only the host can start the game." }, status: :forbidden
+    end
+
+    GameStarterService.new(game).call
+
+    render json: {
+      status: { code: 200, message: "Game started." },
+      data: {
+        game_id: game.id,
+        room_code: game.room_code,
+        status: game.status
+      }
+    }, status: :ok
+  rescue GameStarterService::Error => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  private
+
+  # The value of a face-down card is never sent, so players cannot cheat by reading the API
+  def card_json(card)
+    return nil unless card
+
+    {
+      id: card.id,
+      row: card.row,
+      column: card.column,
+      face_up: card.is_face_up,
+      value: card.is_face_up ? card.value : nil
+    }
   end
 end
