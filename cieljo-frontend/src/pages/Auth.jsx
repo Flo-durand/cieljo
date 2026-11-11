@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { API_URL, jsonHeaders } from '../api';
 import './Auth.scss';
-
-const API_URL = 'http://localhost:3000/api/v1';
 
 export default function Auth() {
   const [email, setEmail] = useState('');
@@ -18,7 +17,7 @@ export default function Auth() {
     try {
       const response = await fetch(`${API_URL}/users`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders,
         body: JSON.stringify({ user: { email, password, username } })
       });
       const data = await response.json();
@@ -41,7 +40,7 @@ export default function Auth() {
     try {
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonHeaders,
         body: JSON.stringify({ user: { email, password } })
       });
 
