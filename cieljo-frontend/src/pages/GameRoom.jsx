@@ -16,6 +16,8 @@ export default function GameRoom() {
   const [status, setStatus] = useState('pending');
   const [drawPileCount, setDrawPileCount] = useState(0);
   const [discardTop, setDiscardTop] = useState(null);
+  const [initialReveal, setInitialReveal] = useState(false);
+  const [currentPlayerId, setCurrentPlayerId] = useState(null);
   const [error, setError] = useState('');
   const [isStarting, setIsStarting] = useState(false);
   // Bumped to reload the game right away (e.g. after starting it)
@@ -32,6 +34,8 @@ export default function GameRoom() {
           setStatus(data.data.status);
           setDrawPileCount(data.data.draw_pile_count);
           setDiscardTop(data.data.discard_top);
+          setInitialReveal(data.data.initial_reveal);
+          setCurrentPlayerId(data.data.current_player_id);
           setError('');
         } else {
           setError(data.error || 'Could not load the game.');
@@ -69,6 +73,26 @@ export default function GameRoom() {
       setError(`Could not reach the backend server. Details: ${err.message || err}`);
     } finally {
       setIsStarting(false);
+    }
+  };
+
+  const handleRevealCard = async cardId => {
+    try {
+      const response = await fetch(`${API_URL}/games/${room_code}/reveal`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ card_id: cardId }),
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        // Reload the game to show the revealed card
+        setReloadKey(key => key + 1);
+      } else {
+        setError(data.error || 'Could not reveal the card.');
+      }
+    } catch (err) {
+      setError(`Could not reach the backend server. Details: ${err.message || err}`);
     }
   };
 
@@ -142,7 +166,14 @@ export default function GameRoom() {
       {error && <p className="game-room__error">{error}</p>}
 
       {status === 'pending' ? lobby : (
-        <GameTable players={players} drawPileCount={drawPileCount} discardTop={discardTop} />
+        <GameTable
+          players={players}
+          drawPileCount={drawPileCount}
+          discardTop={discardTop}
+          initialReveal={initialReveal}
+          currentPlayerId={currentPlayerId}
+          onRevealCard={handleRevealCard}
+        />
       )}
     </div>
   );
