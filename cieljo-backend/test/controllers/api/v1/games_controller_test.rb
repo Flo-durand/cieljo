@@ -173,4 +173,122 @@ class Api::V1::GamesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_found
   end
+
+  # --- Revealing the first cards ---
+
+  def reveal(card, user)
+    post reveal_api_v1_game_url("ABCD"), params: { card_id: card.id }, headers: auth_headers(user), as: :json
+  end
+
+  # Starts game one and gives each grid known values, so the first player is predictable
+  def start_game_one(values_by_user)
+    game = prepare_game_one
+    start("ABCD", users(:one))
+
+    values_by_user.each do |user, values|
+      grid_of(game, user).each_with_index { |card, index| card.update!(value: values.fetch(index, 0)) }
+    end
+    game
+  end
+
+  def grid_of(game, user)
+    game.cards.where(location: "player_grid", player: game.players.find_by(user: users(user))).order(:row, :column)
+  end
+
+  test "starting a game opens the reveal phase without a current player" do
+    game = start_game_one({})
+
+    assert game.reload.initial_reveal_phase?
+    assert_nil game.current_player
+  end
+
+  test "a player reveals a card of their grid" do
+    game = start_game_one({})
+    card = grid_of(game, :one).first
+
+    reveal(card, users(:one))
+
+    assert_response :ok
+    assert card.reload.is_face_up
+    assert response.parsed_body.dig("data", "initial_reveal")
+  end
+
+  test "cannot reveal more than 2 cards" do
+    game = start_game_one({})
+    cards = grid_of(game, :one).first(3)
+    reveal(cards[0], users(:one))
+    reveal(cards[1], users(:one))
+
+    reveal(cards[2], users(:one))
+
+    assert_response :unprocessable_entity
+    assert_not cards[2].reload.is_face_up
+  end
+
+  test "cannot reveal a card of another player" do
+    game = start_game_one({})
+    card = grid_of(game, :two).first
+
+    reveal(card, users(:one))
+
+    assert_response :unprocessable_entity
+    assert_equal "This card is not in your grid.", response.parsed_body["error"]
+  end
+
+  test "cannot reveal the same card twice" do
+    game = start_game_one({})
+    card = grid_of(game, :one).first
+    reveal(card, users(:one))
+
+    reveal(card, users(:one))
+
+    assert_response :unprocessable_entity
+    assert_equal "This card is already face up.", response.parsed_body["error"]
+  end
+
+  test "the player with the highest total plays first once everyone has revealed" do
+    game = start_game_one(one: [ 1, 2 ], two: [ 5, 6 ])
+    grid_one = grid_of(game, :one)
+    grid_two = grid_of(game, :two)
+
+    reveal(grid_one[0], users(:one))
+    reveal(grid_one[1], users(:one))
+    reveal(grid_two[0], users(:two))
+    assert game.reload.initial_reveal_phase?
+
+    reveal(grid_two[1], users(:two))
+
+    assert_not game.reload.initial_reveal_phase?
+    assert_equal users(:two), game.current_player.user
+    assert_equal game.current_player_id, response.parsed_body.dig("data", "current_player_id")
+  end
+
+  test "on a tie, the first player in turn order plays first" do
+    game = start_game_one(one: [ 3, 3 ], two: [ 4, 2 ])
+    (grid_of(game, :one).first(2) + grid_of(game, :two).first(2)).each do |card|
+      reveal(card, card.player.user)
+    end
+
+    assert_equal users(:one), game.reload.current_player.user
+  end
+
+  test "cannot use the initial reveal once the first player is chosen" do
+    game = start_game_one({})
+    (grid_of(game, :one).first(2) + grid_of(game, :two).first(2)).each do |card|
+      reveal(card, card.player.user)
+    end
+
+    reveal(grid_of(game, :one)[5], users(:one))
+
+    assert_response :unprocessable_entity
+  end
+
+  test "users who are not players cannot reveal cards" do
+    game = start_game_one({})
+    outsider = User.create!(email: "three@example.com", username: "player_three", password: "password123")
+
+    reveal(grid_of(game, :one).first, outsider)
+
+    assert_response :forbidden
+  end
 end

@@ -1,25 +1,19 @@
 class Api::V1::GamesController < ApplicationController
+  before_action :set_game, only: %i[show start reveal]
+  before_action :set_current_player, only: %i[show reveal]
 
   def show
-    game = Game.find_by(room_code: params[:room_code].to_s.strip.upcase)
-
-    unless game
-      return render json: { error: "No game found with this code." }, status: :not_found
-    end
-
-    # Only the players of a game can see its room
-    unless game.players.exists?(user: current_user)
-      return render json: { error: "You are not a player of this game." }, status: :forbidden
-    end
-
-    players = game.players.includes(:user).order(:turn_order)
-    grids = game.cards.where(location: "player_grid").order(:row, :column).group_by(&:player_id)
+    players = @game.players.includes(:user).order(:turn_order)
+    grids = @game.cards.where(location: "player_grid").order(:row, :column).group_by(&:player_id)
 
     render json: {
       data: {
-        game_id: game.id,
-        room_code: game.room_code,
-        status: game.status,
+        game_id: @game.id,
+        room_code: @game.room_code,
+        status: @game.status,
+        # True while the players reveal their first cards; the current player is then chosen
+        initial_reveal: @game.initial_reveal_phase?,
+        current_player_id: @game.current_player_id,
         players: players.map do |player|
           {
             id: player.id,
@@ -30,9 +24,9 @@ class Api::V1::GamesController < ApplicationController
             grid: (grids[player.id] || []).map { |card| card_json(card) }
           }
         end,
-        draw_pile_count: game.cards.where(location: "draw_pile").count,
+        draw_pile_count: @game.cards.where(location: "draw_pile").count,
         # The last card put on the discard pile is the visible one
-        discard_top: card_json(game.cards.where(location: "discard_pile").order(:updated_at, :id).last)
+        discard_top: card_json(@game.cards.where(location: "discard_pile").order(:updated_at, :id).last)
       }
     }, status: :ok
   end
@@ -102,32 +96,56 @@ class Api::V1::GamesController < ApplicationController
   end
 
   def start
-    game = Game.find_by(room_code: params[:room_code].to_s.strip.upcase)
-
-    unless game
-      return render json: { error: "No game found with this code." }, status: :not_found
-    end
-
     # The host is the player who created the game (turn order 1)
-    unless game.players.exists?(user: current_user, turn_order: 1)
+    unless @game.players.exists?(user: current_user, turn_order: 1)
       return render json: { error: "Only the host can start the game." }, status: :forbidden
     end
 
-    GameStarterService.new(game).call
+    GameStarterService.new(@game).call
 
     render json: {
       status: { code: 200, message: "Game started." },
       data: {
-        game_id: game.id,
-        room_code: game.room_code,
-        status: game.status
+        game_id: @game.id,
+        room_code: @game.room_code,
+        status: @game.status
       }
     }, status: :ok
   rescue GameStarterService::Error => e
     render json: { error: e.message }, status: :unprocessable_entity
   end
 
+  # POST /api/v1/games/:room_code/reveal with { card_id }
+  def reveal
+    InitialRevealService.new(@game, @player, params[:card_id]).call
+
+    render json: {
+      status: { code: 200, message: "Card revealed." },
+      data: {
+        game_id: @game.id,
+        room_code: @game.room_code,
+        initial_reveal: @game.initial_reveal_phase?,
+        current_player_id: @game.current_player_id
+      }
+    }, status: :ok
+  rescue InitialRevealService::Error => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
   private
+
+  def set_game
+    @game = Game.find_by(room_code: params[:room_code].to_s.strip.upcase)
+
+    render json: { error: "No game found with this code." }, status: :not_found unless @game
+  end
+
+  # Only the players of a game can see it and play in it
+  def set_current_player
+    @player = @game.players.find_by(user: current_user)
+
+    render json: { error: "You are not a player of this game." }, status: :forbidden unless @player
+  end
 
   # The value of a face-down card is never sent, so players cannot cheat by reading the API
   def card_json(card)

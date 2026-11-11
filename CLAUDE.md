@@ -40,7 +40,7 @@ The frontend has no test setup.
 ## Architecture
 
 ### Integration between frontend and backend
-- All API routes live under `/api/v1` (`config/routes.rb`). `src/api.js` exports `API_URL` (`http://localhost:3000/api/v1`) and `authHeaders()`, which adds the JSON headers and the `Authorization` header from `localStorage`. `pages/Auth.jsx` still defines its own `API_URL`. There is no Vite proxy.
+- All API routes live under `/api/v1` (`config/routes.rb`). `src/api.js` exports `API_URL` (`http://localhost:3000/api/v1`), `jsonHeaders` for public requests and `authHeaders()`, which adds the `Authorization` header from `localStorage`. Every page uses them. There is no Vite proxy.
 - CORS (`config/initializers/cors.rb`) only allows `http://localhost:5173` and exposes the `Authorization` header.
 
 ### Authentication (custom JWT flow, not standard Devise)
@@ -57,8 +57,9 @@ The frontend has no test setup.
 - `GameInitializerService` builds the 150-card Skyjo deck (-2×5, -1×15, 0..12×10), shuffles it, and inserts it with `insert_all!`, which skips model validations.
 - `POST /api/v1/games` creates the game, adds the current user as player 1, sets `current_player`, then runs the initializer.
 - The host is the player with `turn_order` 1. `POST /api/v1/games/join` adds a player to a `pending` game.
-- `POST /api/v1/games/:room_code/start` (host only, at least 2 players) runs `GameStarterService`: under a row lock, it deals a 3x4 grid (`row` 0..2, `column` 0..3) of face-down cards to each player, flips the next draw pile card onto the discard pile and sets the game `in_progress`.
-- `GET /api/v1/games/:room_code` (players only) returns the players with their `grid`, the `draw_pile_count` and the `discard_top` card. The value of a face-down card is never sent (`card_json` in `GamesController`).
+- `POST /api/v1/games/:room_code/start` (host only, at least 2 players) runs `GameStarterService`: under a row lock, it deals a 3x4 grid (`row` 0..2, `column` 0..3) of face-down cards to each player, flips the next draw pile card onto the discard pile, sets the game `in_progress` and clears `current_player`.
+- Initial reveal phase (`Game#initial_reveal_phase?`: `in_progress` with no `current_player`): each player reveals `Game::INITIAL_REVEAL_COUNT` (2) cards of their grid with `POST /api/v1/games/:room_code/reveal` (`{ card_id }`, `InitialRevealService`). Once everyone has, the player with the highest revealed total becomes `current_player` (tie: lowest `turn_order`).
+- `GET /api/v1/games/:room_code` (players only) returns `initial_reveal`, `current_player_id`, the players with their `grid`, the `draw_pile_count` and the `discard_top` card. The value of a face-down card is never sent (`card_json` in `GamesController`).
 - `Friendship` (self-join on `User`, status `pending|accepted|blocked`) and `Invitation` (`host`/`guest` users) exist only as models for now, with no endpoints.
 
 ### Frontend routes (`src/App.jsx`)

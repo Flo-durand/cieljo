@@ -12,8 +12,16 @@ class Game < ApplicationRecord
   validates :room_code, presence: true, uniqueness: true
   validates :status, inclusion: { in: %w[pending in_progress finished] }
 
+  # Number of cards each player reveals at the start of the game
+  INITIAL_REVEAL_COUNT = 2
+
   # Automatically generate a unique 4-character room code before creating the game
   before_validation :generate_room_code, on: :create
+
+  # Once the game has started, the first player is only chosen after everyone has revealed their first cards
+  def initial_reveal_phase?
+    status == "in_progress" && current_player_id.nil?
+  end
 
   private
 

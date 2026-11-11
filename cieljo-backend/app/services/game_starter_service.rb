@@ -27,7 +27,8 @@ class GameStarterService
       players.each { |player| deal_grid(player, draw_pile) }
       draw_pile.shift.update!(location: "discard_pile", is_face_up: true)
 
-      @game.update!(status: "in_progress")
+      # No current player until everyone has revealed their first cards (see InitialRevealService)
+      @game.update!(status: "in_progress", current_player: nil)
     end
   end
 

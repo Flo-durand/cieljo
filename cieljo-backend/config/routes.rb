@@ -19,6 +19,8 @@ Rails.application.routes.draw do
         post :join, on: :collection
         # POST /api/v1/games/:room_code/start (host only)
         post :start, on: :member
+        # POST /api/v1/games/:room_code/reveal with { card_id }
+        post :reveal, on: :member
       end
     end
   end
