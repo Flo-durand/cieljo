@@ -1,6 +1,8 @@
 @use '../styles/variables' as *;
 
 .card {
+  // The border is included in the size, so a card does not grow when it is turned face up
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -19,13 +21,13 @@
   }
 
   &--face-down {
-    background-color: #000;
+    background-color: $color-black;
   }
 
   &--face-up {
-    border: 2px solid #000;
+    border: 2px solid $color-black;
     background-color: $color-white;
-    color: #000;
+    color: $color-black;
   }
 
   &--clickable {
@@ -38,13 +40,42 @@
     &:hover,
     &:focus-visible {
       transform: translateY(-4px);
-      box-shadow: 0 0 0 3px #ffd54f;
+      box-shadow: 0 0 0 3px $color-highlight;
       outline: none;
     }
+  }
+
+  // Not dealt yet: keeps its place in the layout so the deal animation can aim at it
+  &--hidden {
+    visibility: hidden;
+  }
+
+  // A card flying from the draw pile during the deal animation (see hooks/useDealAnimation.js)
+  &--flying {
+    position: fixed;
+    z-index: 1000;
+    margin: 0;
+    pointer-events: none;
+    transform-origin: top left;
+  }
+
+  // Ends the flip started by the deal animation (the flying card stops edge-on, at 90deg)
+  &--flip-in {
+    animation: card-flip-in 0.4s ease-out;
   }
 
   // Placeholder, e.g. an empty discard pile
   &--empty {
     border: 2px dashed $color-border;
+  }
+}
+
+@keyframes card-flip-in {
+  from {
+    transform: perspective(400px) rotateY(90deg);
+  }
+
+  to {
+    transform: perspective(400px) rotateY(0);
   }
 }

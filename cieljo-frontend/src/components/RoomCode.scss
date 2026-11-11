@@ -1,0 +1,45 @@
+@use '../styles/variables' as *;
+
+.room-code {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  &__code {
+    margin: 0;
+    font-size: 40px;
+    color: $color-highlight;
+    letter-spacing: 2px;
+  }
+
+  // An empty line keeps its height
+  &__line {
+    min-height: 1.2em;
+    margin: 0;
+    opacity: 0.85;
+  }
+
+  // Same height with or without the start button
+  &__action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+  }
+
+  // When the game starts, the room code fades out over the draw pile, which fades in
+  &--leaving {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    animation: room-code-fade-out 0.4s ease-in forwards;
+  }
+}
+
+@keyframes room-code-fade-out {
+  to {
+    opacity: 0;
+  }
+}

@@ -1,0 +1,42 @@
+.table-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+
+  // Starts once the room code has faded out (see RoomCode.scss and INTRO_MS in useDealAnimation.js)
+  &--entering {
+    animation: table-center-fade-in 0.4s ease-out 0.4s both;
+  }
+
+  &__piles {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+  }
+
+  &__pile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+  }
+
+  &__message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+  }
+}
+
+@keyframes table-center-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

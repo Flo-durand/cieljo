@@ -65,9 +65,10 @@ The frontend has no test setup.
 ### Frontend routes (`src/App.jsx`)
 - `/` → `pages/home.jsx` (creates a game or joins one with a room code, then navigates to the room)
 - `/auth` → `pages/Auth.jsx`
-- `/game/:room_code` → `pages/GameRoom.jsx` (polls the game every 3 seconds; shows the lobby while `pending`, then `components/GameTable.jsx`)
+- `/game/:room_code` → `pages/GameRoom.jsx` (polls the game every 3 seconds; shows the lobby on the table while `pending`, then `components/GameTable.jsx`)
 - `pages/Dashboard.jsx` exists but is not routed.
 
 ### Frontend structure
-- `src/pages/`: one component per route. `src/components/`: reusable components (`Card`, `PlayerGrid`, `GameTable`).
+- `src/pages/`: one component per route. `src/components/`: reusable components (`Card`, `PlayerGrid`, `TableLayout` for the green table and the seats around it, `RoomCode` shown in its middle in the lobby, `TableCenter` for the piles and the game message in its middle during the game, `GameTable`). The table keeps the same size when the game starts: the room code fades out, the piles fade in, then the cards are dealt.
+- `src/hooks/`: custom hooks. `useDealAnimation` plays the ~10 s deal animation (cards fly from the draw pile with the Web Animations API, then the first discard card flips) when a page sees the game go from `pending` to `in_progress`. It is skipped with `prefers-reduced-motion`.
 - Each component's `.scss` file sits next to its `.jsx` file and is imported by it. `src/styles/` only holds shared SCSS (`_variables.scss`, `_mixins.scss`), used with `@use`.
