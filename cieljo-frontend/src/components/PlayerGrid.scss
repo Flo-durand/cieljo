@@ -1,0 +1,27 @@
+@use '../styles/variables' as *;
+
+.player-grid {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+
+  &__name {
+    font-weight: bold;
+  }
+
+  // The API sends the cards ordered by row then column, so 4 columns rebuild the grid
+  &__cards {
+    display: grid;
+    grid-template-columns: repeat(4, auto);
+    gap: 6px;
+  }
+
+  &--small &__name {
+    font-size: 14px;
+  }
+
+  &--small &__cards {
+    gap: 3px;
+  }
+}

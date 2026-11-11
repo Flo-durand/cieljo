@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API_URL, authHeaders } from '../api';
+import GameTable from '../components/GameTable';
 import './GameRoom.scss';
 
 // How often the player list is refreshed (until real-time updates with ActionCable)
@@ -12,7 +13,13 @@ export default function GameRoom() {
   const navigate = useNavigate();
 
   const [players, setPlayers] = useState([]);
+  const [status, setStatus] = useState('pending');
+  const [drawPileCount, setDrawPileCount] = useState(0);
+  const [discardTop, setDiscardTop] = useState(null);
   const [error, setError] = useState('');
+  const [isStarting, setIsStarting] = useState(false);
+  // Bumped to reload the game right away (e.g. after starting it)
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const fetchGame = async () => {
@@ -22,6 +29,9 @@ export default function GameRoom() {
 
         if (response.ok) {
           setPlayers(data.data.players);
+          setStatus(data.data.status);
+          setDrawPileCount(data.data.draw_pile_count);
+          setDiscardTop(data.data.discard_top);
           setError('');
         } else {
           setError(data.error || 'Could not load the game.');
@@ -34,36 +44,47 @@ export default function GameRoom() {
     fetchGame();
     const intervalId = setInterval(fetchGame, REFRESH_INTERVAL_MS);
     return () => clearInterval(intervalId);
-  }, [room_code]);
+  }, [room_code, reloadKey]);
 
   // Only the host can start the game
   const isHost = players.some(player => player.host && player.current_user);
+  const canStart = players.length >= 2 && !isStarting;
+
+  const handleStartGame = async () => {
+    setIsStarting(true);
+    try {
+      const response = await fetch(`${API_URL}/games/${room_code}/start`, {
+        method: 'POST',
+        headers: authHeaders(),
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        // Reload the game to get the dealt cards
+        setReloadKey(key => key + 1);
+      } else {
+        setError(data.error || 'Could not start the game.');
+      }
+    } catch (err) {
+      setError(`Could not reach the backend server. Details: ${err.message || err}`);
+    } finally {
+      setIsStarting(false);
+    }
+  };
 
   const handleLeaveGame = () => {
     // Later, notify the Rails backend through the API or ActionCable
     navigate('/');
   };
 
-  return (
-    <div className="game-room">
-      <div className="game-room__header">
-        <h2>🎰 Skyjo table: Cieljo</h2>
-        <button
-          onClick={handleLeaveGame}
-          className="btn btn--danger"
-        >
-          Leave the table
-        </button>
-      </div>
-
+  const lobby = (
+    <>
       <div className="game-room__code-section">
         <h1 className="game-room__code">
           Room code: {room_code}
         </h1>
         <p className="game-room__hint">Share this code with your friends so they can join your game!</p>
       </div>
-
-      {error && <p className="game-room__error">{error}</p>}
 
       <div className="game-room__players">
         <h3>👥 Players at the table ({players.length})</h3>
@@ -88,9 +109,14 @@ export default function GameRoom() {
         {isHost ? (
           <button
             className="btn btn--success game-room__start"
-            disabled
+            onClick={handleStartGame}
+            disabled={!canStart}
           >
-            Start the game (requires at least 2 players)
+            {isStarting
+              ? 'Starting...'
+              : players.length < 2
+                ? 'Start the game (requires at least 2 players)'
+                : 'Start the game'}
           </button>
         ) : (
           players.length > 0 && (
@@ -98,6 +124,26 @@ export default function GameRoom() {
           )
         )}
       </div>
+    </>
+  );
+
+  return (
+    <div className="game-room">
+      <div className="game-room__header">
+        <h2>🎰 Skyjo table: Cieljo</h2>
+        <button
+          onClick={handleLeaveGame}
+          className="btn btn--danger"
+        >
+          Leave the table
+        </button>
+      </div>
+
+      {error && <p className="game-room__error">{error}</p>}
+
+      {status === 'pending' ? lobby : (
+        <GameTable players={players} drawPileCount={drawPileCount} discardTop={discardTop} />
+      )}
     </div>
   );
 }

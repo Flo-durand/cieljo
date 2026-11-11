@@ -151,6 +151,23 @@ class Api::V1::GamesControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
   end
 
+  test "shows the dealt grids without the values of face-down cards" do
+    prepare_game_one
+    start("ABCD", users(:one))
+
+    get api_v1_game_url("ABCD"), headers: auth_headers(users(:two)), as: :json
+
+    assert_response :ok
+    data = response.parsed_body["data"]
+    data["players"].each do |player|
+      assert_equal 12, player["grid"].size
+      assert player["grid"].all? { |card| card["value"].nil? && !card["face_up"] }
+    end
+    assert data["discard_top"]["face_up"]
+    assert_not_nil data["discard_top"]["value"]
+    assert_equal 125, data["draw_pile_count"]
+  end
+
   test "returns 404 when starting an unknown room" do
     start("ZZZZ", users(:one))
 

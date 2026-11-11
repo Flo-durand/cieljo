@@ -13,6 +13,7 @@ class Api::V1::GamesController < ApplicationController
     end
 
     players = game.players.includes(:user).order(:turn_order)
+    grids = game.cards.where(location: "player_grid").order(:row, :column).group_by(&:player_id)
 
     render json: {
       data: {
@@ -25,9 +26,13 @@ class Api::V1::GamesController < ApplicationController
             username: player.user.username,
             turn_order: player.turn_order,
             host: player.turn_order == 1,
-            current_user: player.user_id == current_user.id
+            current_user: player.user_id == current_user.id,
+            grid: (grids[player.id] || []).map { |card| card_json(card) }
           }
-        end
+        end,
+        draw_pile_count: game.cards.where(location: "draw_pile").count,
+        # The last card put on the discard pile is the visible one
+        discard_top: card_json(game.cards.where(location: "discard_pile").order(:updated_at, :id).last)
       }
     }, status: :ok
   end
@@ -120,5 +125,20 @@ class Api::V1::GamesController < ApplicationController
     }, status: :ok
   rescue GameStarterService::Error => e
     render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  private
+
+  # The value of a face-down card is never sent, so players cannot cheat by reading the API
+  def card_json(card)
+    return nil unless card
+
+    {
+      id: card.id,
+      row: card.row,
+      column: card.column,
+      face_up: card.is_face_up,
+      value: card.is_face_up ? card.value : nil
+    }
   end
 end
