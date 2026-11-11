@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API_URL, authHeaders } from '../api';
 import GameTable from '../components/GameTable';
+import PlayerGrid from '../components/PlayerGrid';
+import RoomCode from '../components/RoomCode';
+import TableLayout from '../components/TableLayout';
+import { buildDeal, prefersReducedMotion } from '../hooks/useDealAnimation';
 import './GameRoom.scss';
 
 // How often the player list is refreshed (until real-time updates with ActionCable)
@@ -22,6 +26,10 @@ export default function GameRoom() {
   const [isStarting, setIsStarting] = useState(false);
   // Bumped to reload the game right away (e.g. after starting it)
   const [reloadKey, setReloadKey] = useState(0);
+  // The deal being animated, set when this page sees the game go from pending to in progress
+  const [deal, setDeal] = useState(null);
+  const lastStatusRef = useRef(null);
+  const handleDealEnd = useCallback(() => setDeal(null), []);
 
   useEffect(() => {
     const fetchGame = async () => {
@@ -30,6 +38,12 @@ export default function GameRoom() {
         const data = await response.json();
 
         if (response.ok) {
+          // Only animate a start seen live: reopening a started game shows the cards right away
+          if (lastStatusRef.current === 'pending' && data.data.status === 'in_progress' && !prefersReducedMotion()) {
+            setDeal(buildDeal(data.data.players, data.data.discard_top));
+          }
+          lastStatusRef.current = data.data.status;
+
           setPlayers(data.data.players);
           setStatus(data.data.status);
           setDrawPileCount(data.data.draw_pile_count);
@@ -101,36 +115,21 @@ export default function GameRoom() {
     navigate('/');
   };
 
+  let waiting = 'Everyone is here? Start the game!';
+  if (players.length < 2) waiting = 'Waiting for other players...';
+  else if (!isHost) waiting = 'Waiting for the host to start the game...';
+
+  // Before the deal, the players already sit at their seats, and the room code is in the middle of the table
   const lobby = (
-    <>
-      <div className="game-room__code-section">
-        <h1 className="game-room__code">
-          Room code: {room_code}
-        </h1>
-        <p className="game-room__hint">Share this code with your friends so they can join your game!</p>
-      </div>
-
-      <div className="game-room__players">
-        <h3>👥 Players at the table ({players.length})</h3>
-        <ul className="game-room__player-list">
-          {players.map(player => (
-            <li key={player.id} className="game-room__player">
-              {player.host && '👑 '}
-              {player.username}
-              {player.current_user && <span className="game-room__you"> (you)</span>}
-              {player.host && <span className="game-room__player-status"> (Host)</span>}
-            </li>
-          ))}
-          {players.length < 2 && (
-            <li className="game-room__player game-room__player--waiting">
-              Waiting for other players...
-            </li>
-          )}
-        </ul>
-      </div>
-
-      <div className="game-room__actions">
-        {isHost ? (
+    <TableLayout
+      players={players}
+      renderPlayer={(player, { small }) => <PlayerGrid player={player} small={small} />}
+    >
+      <RoomCode
+        code={room_code}
+        lines={['Share this code with your friends so they can join your game!', waiting]}
+      >
+        {isHost && (
           <button
             className="btn btn--success game-room__start"
             onClick={handleStartGame}
@@ -142,13 +141,9 @@ export default function GameRoom() {
                 ? 'Start the game (requires at least 2 players)'
                 : 'Start the game'}
           </button>
-        ) : (
-          players.length > 0 && (
-            <p className="game-room__hint">Waiting for the host to start the game...</p>
-          )
         )}
-      </div>
-    </>
+      </RoomCode>
+    </TableLayout>
   );
 
   return (
@@ -167,12 +162,15 @@ export default function GameRoom() {
 
       {status === 'pending' ? lobby : (
         <GameTable
+          roomCode={room_code}
           players={players}
           drawPileCount={drawPileCount}
           discardTop={discardTop}
           initialReveal={initialReveal}
           currentPlayerId={currentPlayerId}
           onRevealCard={handleRevealCard}
+          deal={deal}
+          onDealEnd={handleDealEnd}
         />
       )}
     </div>

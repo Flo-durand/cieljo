@@ -1,5 +1,4 @@
 @use '../styles/variables' as *;
-@use '../styles/mixins' as *;
 
 .game-room {
   padding: 20px;
@@ -13,62 +12,9 @@
     border-bottom: 2px solid $color-border-light;
   }
 
-  &__code-section {
-    margin-top: 40px;
-  }
-
-  &__code {
-    margin: 10px 0;
-    font-size: 48px;
-    color: $color-primary;
-    letter-spacing: 2px;
-  }
-
-  &__hint {
-    color: $color-text-muted;
-  }
-
-  &__players {
-    @include card;
-    max-width: 400px;
-    margin: 40px auto;
-    background-color: $color-bg-light;
-  }
-
-  &__player-list {
-    padding: 0;
-    font-size: 18px;
-    list-style-type: none;
-  }
-
-  &__player {
-    padding: 8px 0;
-    border-bottom: 1px solid $color-border-light;
-
-    &--waiting {
-      border-bottom: none;
-      color: $color-text-faded;
-      font-style: italic;
-    }
-  }
-
-  &__player-status {
-    font-size: 14px;
-    color: $color-success;
-  }
-
-  &__you {
-    font-size: 14px;
-    color: $color-text-muted;
-  }
-
   &__error {
     color: $color-danger;
     font-weight: bold;
-  }
-
-  &__actions {
-    margin-top: 30px;
   }
 
   &__start {

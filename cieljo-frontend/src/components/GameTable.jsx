@@ -1,33 +1,20 @@
-import Card from './Card';
+import { useMemo, useRef } from 'react';
+import useDealAnimation from '../hooks/useDealAnimation';
 import PlayerGrid from './PlayerGrid';
+import RoomCode from './RoomCode';
+import TableCenter from './TableCenter';
+import TableLayout from './TableLayout';
 import './GameTable.scss';
 
 // Must match Game::INITIAL_REVEAL_COUNT in the backend
 const INITIAL_REVEAL_COUNT = 2;
 
-// Seats the opponents around the table, clockwise from the current player (who sits at the bottom):
-// left side (bottom to top), then the top (left to right), then the right side (top to bottom).
-function seatOpponents(players) {
-  const meIndex = players.findIndex(player => player.current_user);
-  // Opponents in turn order, starting with the player right after the current one
-  const opponents = [...players.slice(meIndex + 1), ...players.slice(0, meIndex)];
-  const count = opponents.length;
-
-  if (count === 1) return { left: [], top: opponents, right: [] };
-  if (count === 2) return { left: [opponents[0]], top: [], right: [opponents[1]] };
-
-  const perSide = Math.max(1, Math.floor(count / 3));
-  return {
-    left: opponents.slice(0, perSide).reverse(),
-    top: opponents.slice(perSide, count - perSide),
-    right: opponents.slice(count - perSide),
-  };
-}
-
 const faceUpCount = player => player.grid.filter(card => card.face_up).length;
 
 // Message shown in the middle of the table
-function tableMessage({ me, players, initialReveal, currentPlayerId }) {
+function tableMessage({ me, players, initialReveal, currentPlayerId, dealing }) {
+  if (dealing) return 'Dealing the cards...';
+
   if (initialReveal) {
     const left = INITIAL_REVEAL_COUNT - faceUpCount(me);
     if (left > 0) return `Reveal ${left} card${left > 1 ? 's' : ''} of your grid.`;
@@ -39,52 +26,61 @@ function tableMessage({ me, players, initialReveal, currentPlayerId }) {
   return playing.current_user ? "It's your turn!" : `It's ${playing.username}'s turn.`;
 }
 
-export default function GameTable({ players, drawPileCount, discardTop, initialReveal, currentPlayerId, onRevealCard }) {
+// deal (from buildDeal) plays the deal animation; onDealEnd is called once it is over
+export default function GameTable({
+  roomCode, players, drawPileCount, discardTop, initialReveal, currentPlayerId, onRevealCard, deal, onDealEnd,
+}) {
   const me = players.find(player => player.current_user);
-  const seats = seatOpponents(players);
+
+  const pileRef = useRef(null);
+  const landedCount = useDealAnimation(deal, pileRef, onDealEnd);
+  const dealing = Boolean(deal);
+  const dealtCards = deal ? deal.cardIds.length + 1 : 0; // the grids, then the discard card
+
+  // Position of each grid card in the deal, to hide the ones that have not landed yet
+  const dealIndex = useMemo(
+    () => new Map((deal?.cardIds ?? []).map((cardId, index) => [cardId, index])),
+    [deal],
+  );
+  const isCardHidden = card => dealing && (dealIndex.get(card.id) ?? -1) >= landedCount;
+
+  let discardClassName = '';
+  if (dealing) discardClassName = landedCount < dealtCards ? 'card--hidden' : 'card--flip-in';
 
   // During the initial reveal, the player can click their face-down cards until 2 are face up
   const canRevealCard = card =>
-    initialReveal && !card.face_up && faceUpCount(me) < INITIAL_REVEAL_COUNT;
+    !dealing && initialReveal && !card.face_up && faceUpCount(me) < INITIAL_REVEAL_COUNT;
+
+  const renderPlayer = (player, { small }) => (
+    <PlayerGrid
+      player={player}
+      small={small}
+      isPlaying={player.id === currentPlayerId}
+      canClickCard={player.current_user ? canRevealCard : undefined}
+      onCardClick={card => onRevealCard(card.id)}
+      isCardHidden={isCardHidden}
+    />
+  );
 
   return (
-    <div className="game-table">
-      {['left', 'top', 'right'].map(side => (
-        <div key={side} className={`game-table__seats game-table__seats--${side}`}>
-          {seats[side].map(player => (
-            <PlayerGrid key={player.id} player={player} small isPlaying={player.id === currentPlayerId} />
-          ))}
-        </div>
-      ))}
-
-      <div className="game-table__center">
-        <div className="game-table__piles">
-          <div className="game-table__pile">
-            <Card card={drawPileCount > 0 ? { face_up: false } : null} />
-            <span>Draw pile ({drawPileCount})</span>
-          </div>
-          <div className="game-table__pile">
-            <Card card={discardTop} />
-            <span>Discard pile</span>
-          </div>
-        </div>
+    <TableLayout players={players} renderPlayer={renderPlayer}>
+      <TableCenter
+        // During the deal, the cards still in flight or waiting are counted in the pile
+        drawPileCount={drawPileCount + Math.max(0, dealtCards - landedCount)}
+        discardTop={discardTop}
+        discardClassName={discardClassName}
+        pileRef={pileRef}
+        entering={dealing}
+      >
         {me && (
           <p className="game-table__message">
-            {tableMessage({ me, players, initialReveal, currentPlayerId })}
+            {tableMessage({ me, players, initialReveal, currentPlayerId, dealing })}
           </p>
         )}
-      </div>
+      </TableCenter>
 
-      <div className="game-table__me">
-        {me && (
-          <PlayerGrid
-            player={me}
-            isPlaying={me.id === currentPlayerId}
-            canClickCard={canRevealCard}
-            onCardClick={card => onRevealCard(card.id)}
-          />
-        )}
-      </div>
-    </div>
+      {/* The room code shown in the lobby fades out as the piles fade in */}
+      {dealing && <RoomCode code={roomCode} lines={['The game is starting!', '']} className="room-code--leaving" />}
+    </TableLayout>
   );
 }
