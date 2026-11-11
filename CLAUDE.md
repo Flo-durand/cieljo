@@ -40,7 +40,7 @@ The frontend has no test setup.
 ## Architecture
 
 ### Integration between frontend and backend
-- All API routes live under `/api/v1` (`config/routes.rb`). The frontend hardcodes `API_URL = 'http://localhost:3000/api/v1'` in each page file. There is no shared API client or Vite proxy.
+- All API routes live under `/api/v1` (`config/routes.rb`). `src/api.js` exports `API_URL` (`http://localhost:3000/api/v1`) and `authHeaders()`, which adds the JSON headers and the `Authorization` header from `localStorage`. `pages/Auth.jsx` still defines its own `API_URL`. There is no Vite proxy.
 - CORS (`config/initializers/cors.rb`) only allows `http://localhost:5173` and exposes the `Authorization` header.
 
 ### Authentication (custom JWT flow, not standard Devise)
@@ -53,13 +53,20 @@ The frontend has no test setup.
 
 ### Game domain (`app/models`, `app/services`)
 - `Game` has many `Player`s (the join between `User` and `Game`, with `score` and `turn_order`), `Card`s and `Invitation`s. `Game#current_player` points to a `Player`. On create, `room_code` is generated automatically as a unique 4-character code. `status` is one of `pending | in_progress | finished`.
-- `Card`: `value`, `location` (string, for example `draw_pile`), `is_face_up`, and `row`/`column` for its position in a player's grid. `player_id` is nullable in the DB (it is null for deck cards), but the model still declares `belongs_to :player` without `optional: true`.
+- `Card`: `value`, `location` (string, for example `draw_pile`), `is_face_up`, and `row`/`column` for its position in a player's grid. `player_id` is null for draw pile and discard pile cards (`belongs_to :player, optional: true`). Locations in use: `draw_pile`, `player_grid`, `discard_pile`. The draw pile order is the `id` order, since the deck is shuffled before insertion.
 - `GameInitializerService` builds the 150-card Skyjo deck (-2×5, -1×15, 0..12×10), shuffles it, and inserts it with `insert_all!`, which skips model validations.
 - `POST /api/v1/games` creates the game, adds the current user as player 1, sets `current_player`, then runs the initializer.
+- The host is the player with `turn_order` 1. `POST /api/v1/games/join` adds a player to a `pending` game.
+- `POST /api/v1/games/:room_code/start` (host only, at least 2 players) runs `GameStarterService`: under a row lock, it deals a 3x4 grid (`row` 0..2, `column` 0..3) of face-down cards to each player, flips the next draw pile card onto the discard pile and sets the game `in_progress`.
+- `GET /api/v1/games/:room_code` (players only) returns the players with their `grid`, the `draw_pile_count` and the `discard_top` card. The value of a face-down card is never sent (`card_json` in `GamesController`).
 - `Friendship` (self-join on `User`, status `pending|accepted|blocked`) and `Invitation` (`host`/`guest` users) exist only as models for now, with no endpoints.
 
 ### Frontend routes (`src/App.jsx`)
-- `/` → `pages/home.jsx` (creates a game, then navigates to the room)
+- `/` → `pages/home.jsx` (creates a game or joins one with a room code, then navigates to the room)
 - `/auth` → `pages/Auth.jsx`
-- `/game/:room_code` → `pages/GameRoom.jsx`
+- `/game/:room_code` → `pages/GameRoom.jsx` (polls the game every 3 seconds; shows the lobby while `pending`, then `components/GameTable.jsx`)
 - `pages/Dashboard.jsx` exists but is not routed.
+
+### Frontend structure
+- `src/pages/`: one component per route. `src/components/`: reusable components (`Card`, `PlayerGrid`, `GameTable`).
+- Each component's `.scss` file sits next to its `.jsx` file and is imported by it. `src/styles/` only holds shared SCSS (`_variables.scss`, `_mixins.scss`), used with `@use`.
