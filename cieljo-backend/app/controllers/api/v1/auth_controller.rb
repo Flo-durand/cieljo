@@ -1,6 +1,6 @@
 class Api::V1::AuthController < ApplicationController
   # No CSRF protection or Devise filters needed here
-  skip_before_action :authenticate_user!, only: [:login]
+  skip_before_action :authenticate_user!, only: [ :login ]
   def login
     # 1. Look up the user
     user = User.find_by(email: params[:user][:email])

@@ -15,6 +15,6 @@ module RackSessionFix
   private
 
   def set_fake_rack_session
-    request.env['rack.session'] ||= FakeRackSession.new
+    request.env["rack.session"] ||= FakeRackSession.new
   end
 end

@@ -35,7 +35,7 @@ class DeviseCreateUsers < ActiveRecord::Migration[8.1]
       t.string :username, null: false
       t.integer :games_played, null: false, default: 0
       t.integer :games_won, null: false, default: 0
-      
+
       t.timestamps null: false
     end
 

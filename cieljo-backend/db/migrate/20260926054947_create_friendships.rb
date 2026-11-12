@@ -9,8 +9,8 @@ class CreateFriendships < ActiveRecord::Migration[8.1]
     end
 
     add_index :friendships, :friend_id
-    
+
     # Prevent duplicate friend requests between the same two users
-    add_index :friendships, [:user_id, :friend_id], unique: true
+    add_index :friendships, [ :user_id, :friend_id ], unique: true
   end
 end
