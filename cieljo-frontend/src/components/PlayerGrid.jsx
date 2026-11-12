@@ -8,7 +8,10 @@ const GRID_SIZE = 12;
 // Before the deal (empty grid), invisible slots keep the grid's size, so the table does not grow at the start.
 // canClickCard(card) tells which cards the player can click, and onCardClick(card) handles the click.
 // isCardHidden(card) hides the cards that the deal animation has not brought yet.
-export default function PlayerGrid({ player, small = false, isPlaying = false, canClickCard, onCardClick, isCardHidden }) {
+// isDropTarget(card) highlights the card under a dragged card.
+export default function PlayerGrid({
+  player, small = false, isPlaying = false, canClickCard, onCardClick, isCardHidden, isDropTarget,
+}) {
   const classes = ['player-grid'];
   if (small) classes.push('player-grid--small');
   if (isPlaying) classes.push('player-grid--playing');
@@ -27,7 +30,10 @@ export default function PlayerGrid({ player, small = false, isPlaying = false, c
               key={card.id}
               card={card}
               small={small}
-              className={isCardHidden?.(card) ? 'card--hidden' : ''}
+              className={[
+                isCardHidden?.(card) && 'card--hidden',
+                isDropTarget?.(card) && 'card--drop-target',
+              ].filter(Boolean).join(' ')}
               onClick={canClickCard?.(card) ? () => onCardClick(card) : undefined}
             />
           ))
