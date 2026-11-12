@@ -34,7 +34,7 @@ class Api::V1::GamesController < ApplicationController
   end
 
   def create
-    @game = Game.new(status: 'pending', turn_number: 1)
+    @game = Game.new(status: "pending", turn_number: 1)
 
     if @game.save
       @player = @game.players.new(user: current_user, score: 0, turn_order: 1)

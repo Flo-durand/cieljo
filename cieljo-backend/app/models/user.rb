@@ -7,9 +7,9 @@ class User < ApplicationRecord
          :jwt_authenticatable, jwt_revocation_strategy: self
 
   def jwt_payload
-    super.merge('jti' => self.jti)
+    super.merge("jti" => self.jti)
   end
-  
+
   # Automatically generate a JTI when the user is created
   before_create :generate_jti
 
@@ -26,12 +26,12 @@ class User < ApplicationRecord
   has_many :friends, through: :friendships
 
   # Friend requests I received (the inverse)
-  has_many :inverse_friendships, class_name: 'Friendship', foreign_key: 'friend_id', dependent: :destroy
+  has_many :inverse_friendships, class_name: "Friendship", foreign_key: "friend_id", dependent: :destroy
   has_many :inverse_friends, through: :inverse_friendships, source: :user
 
   # 4. Game invitations
-  has_many :sent_invitations, class_name: 'Invitation', foreign_key: 'host_id', dependent: :destroy
-  has_many :received_invitations, class_name: 'Invitation', foreign_key: 'guest_id', dependent: :destroy
+  has_many :sent_invitations, class_name: "Invitation", foreign_key: "host_id", dependent: :destroy
+  has_many :received_invitations, class_name: "Invitation", foreign_key: "guest_id", dependent: :destroy
 
   # Validations
   validates :username, presence: true, uniqueness: { case_sensitive: false }, length: { minimum: 3, maximum: 20 }

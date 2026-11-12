@@ -29,7 +29,7 @@ class GameInitializerService
         cards_to_create << {
           game_id: @game.id,
           value: value,
-          location: 'draw_pile',
+          location: "draw_pile",
           is_face_up: false,
           created_at: Time.current,
           updated_at: Time.current

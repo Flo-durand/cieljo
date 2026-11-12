@@ -7,7 +7,7 @@ class Game < ApplicationRecord
   has_many :invitations, dependent: :destroy
 
   # Points to the active player
-  belongs_to :current_player, class_name: 'Player', optional: true
+  belongs_to :current_player, class_name: "Player", optional: true
 
   validates :room_code, presence: true, uniqueness: true
   validates :status, inclusion: { in: %w[pending in_progress finished] }

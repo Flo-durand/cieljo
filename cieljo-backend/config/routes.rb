@@ -5,12 +5,12 @@ Rails.application.routes.draw do
 
       # Standard Devise sign-up/sign-out routes
       devise_for :users, controllers: {
-        sessions: 'api/v1/users/sessions',
-        registrations: 'api/v1/users/registrations'
+        sessions: "api/v1/users/sessions",
+        registrations: "api/v1/users/registrations"
       }, defaults: { format: :json }
 
       # --- Custom login route (outside Devise) ---
-      post 'auth/login', to: 'auth#login', defaults: { format: :json }
+      post "auth/login", to: "auth#login", defaults: { format: :json }
 
       # --- Game routes ---
       # GET /api/v1/games/:room_code returns the game and its players

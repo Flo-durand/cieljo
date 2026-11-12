@@ -10,8 +10,8 @@ class ApplicationController < ActionController::API
 
   def authenticate_user!
     # 1. Extract the raw token string (strip the "Bearer " prefix)
-    auth_header = request.headers['Authorization']
-    token = auth_header.split(' ').last if auth_header.present?
+    auth_header = request.headers["Authorization"]
+    token = auth_header.split(" ").last if auth_header.present?
 
     if token.present?
       begin
@@ -19,10 +19,10 @@ class ApplicationController < ActionController::API
         payload, _header = Warden::JWTAuth::TokenDecoder.new.call(token)
 
         # 3. Load the user from PostgreSQL using the id (sub) stored in the JWT
-        @current_user = User.find_by(id: payload['sub'])
+        @current_user = User.find_by(id: payload["sub"])
 
         # 4. Check the user exists and the token id (jti) matches (rejects revoked tokens)
-        if @current_user && @current_user.jti == payload['jti']
+        if @current_user && @current_user.jti == payload["jti"]
           return true # Authenticated, let the request through
         end
       rescue => e
