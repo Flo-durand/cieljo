@@ -11,6 +11,8 @@ class Game < ApplicationRecord
 
   validates :room_code, presence: true, uniqueness: true
   validates :status, inclusion: { in: %w[pending in_progress finished] }
+  # Where the current player took the card in their hand from (nil when they hold no card)
+  validates :drawn_from, inclusion: { in: %w[draw_pile discard_pile] }, allow_nil: true
 
   # Number of cards each player reveals at the start of the game
   INITIAL_REVEAL_COUNT = 2

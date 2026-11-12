@@ -21,6 +21,10 @@ Rails.application.routes.draw do
         post :start, on: :member
         # POST /api/v1/games/:room_code/reveal with { card_id }
         post :reveal, on: :member
+        # Turns: draw a card, then swap it with a grid card or discard it and reveal a grid card
+        post :draw, on: :member
+        post :swap, on: :member
+        post :discard, on: :member
       end
     end
   end
