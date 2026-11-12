@@ -6,6 +6,7 @@
     '.    top    .'
     'left center right'
     '.    me     .';
+  position: relative;
   grid-template-columns: 1fr auto 1fr;
   gap: 30px;
   align-items: center;
@@ -57,6 +58,12 @@
     grid-area: me;
     display: flex;
     justify-content: center;
+  }
+
+  &__corner {
+    position: absolute;
+    right: 24px;
+    bottom: 24px;
   }
 
   // Keep the empty discard pile placeholder visible on the green table

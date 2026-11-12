@@ -3,18 +3,18 @@ import useCardDrag from '../hooks/useCardDrag';
 import useDealAnimation, { prefersReducedMotion } from '../hooks/useDealAnimation';
 import flyCard from '../utils/flyCard';
 import Card from './Card';
+import InfoButton from './InfoButton';
 import PlayerGrid from './PlayerGrid';
 import RoomCode from './RoomCode';
 import TableCenter from './TableCenter';
 import TableLayout from './TableLayout';
-import './GameTable.scss';
 
 // Must match Game::INITIAL_REVEAL_COUNT in the backend
 const INITIAL_REVEAL_COUNT = 2;
 
 const faceUpCount = player => player.grid.filter(card => card.face_up).length;
 
-// Message shown in the middle of the table
+// Message shown in the info bubble (see InfoButton)
 function tableMessage({ me, players, initialReveal, currentPlayerId, dealing, hand }) {
   if (dealing) return 'Dealing the cards...';
 
@@ -197,7 +197,11 @@ export default function GameTable({
   }
 
   return (
-    <TableLayout players={players} renderPlayer={renderPlayer}>
+    <TableLayout
+      players={players}
+      renderPlayer={renderPlayer}
+      corner={me && <InfoButton message={tableMessage({ me, players, initialReveal, currentPlayerId, dealing, hand: myHand })} />}
+    >
       <TableCenter
         drawPile={drawPile}
         drawLabel={drawLabel}
@@ -208,13 +212,7 @@ export default function GameTable({
         pileRef={pileRef}
         discardRef={discardRef}
         entering={dealing}
-      >
-        {me && (
-          <p className="game-table__message">
-            {tableMessage({ me, players, initialReveal, currentPlayerId, dealing, hand: myHand })}
-          </p>
-        )}
-      </TableCenter>
+      />
 
       {/* The room code shown in the lobby fades out as the piles fade in */}
       {dealing && <RoomCode code={roomCode} lines={['The game is starting!', '']} className="room-code--leaving" />}

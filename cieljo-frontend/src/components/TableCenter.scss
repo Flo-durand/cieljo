@@ -23,6 +23,7 @@
     gap: 6px;
     width: 120px;
     font-size: 14px;
+    transition: opacity 0.2s;
 
     span {
       max-width: 100%;
@@ -31,18 +32,9 @@
       text-overflow: ellipsis;
     }
 
-    transition: opacity 0.2s;
-
     &--inactive {
       opacity: 0.4;
     }
-  }
-
-  &__message {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 48px;
   }
 }
 
