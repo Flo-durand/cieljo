@@ -6,8 +6,13 @@
   align-items: center;
   gap: 8px;
 
+  // Every name has the same padding, so highlighting the player whose turn it is only changes colors
+  // and nothing moves when the turn passes to the next player
   &__name {
+    padding: 2px 10px;
+    border-radius: 10px;
     font-weight: bold;
+    transition: background-color 0.2s, color 0.2s;
   }
 
   // The API sends the cards ordered by row then column, so 4 columns rebuild the grid
@@ -19,8 +24,6 @@
 
   // The player whose turn it is
   &--playing &__name {
-    padding: 2px 10px;
-    border-radius: 10px;
     background-color: $color-highlight;
     color: $color-black;
   }
