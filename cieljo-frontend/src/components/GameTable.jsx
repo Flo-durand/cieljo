@@ -1,6 +1,7 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import useCardDrag from '../hooks/useCardDrag';
-import useDealAnimation from '../hooks/useDealAnimation';
+import useDealAnimation, { prefersReducedMotion } from '../hooks/useDealAnimation';
+import flyCard from '../utils/flyCard';
 import Card from './Card';
 import PlayerGrid from './PlayerGrid';
 import RoomCode from './RoomCode';
@@ -63,11 +64,53 @@ export default function GameTable({
   const holder = hand && players.find(player => player.id === hand.player_id);
   const holderLabel = holder?.current_user ? 'Your card' : `${holder?.username}'s card`;
 
+  // --- Swap animation: the replaced grid card flies to the discard pile ---
+  const discardRef = useRef(null);
+  // The replaced card, hidden from the swap until it lands on the discard pile
+  const [leavingCardId, setLeavingCardId] = useState(null);
+  // A replaced card that was face down: it flips over once on the discard pile
+  const [flippedDiscardId, setFlippedDiscardId] = useState(null);
+
+  const swapAndThrow = async (cardId, play) => {
+    const replaced = me.grid.find(card => card.id === cardId);
+    const element = document.querySelector(`[data-card-id="${cardId}"]`);
+    const animate = Boolean(replaced && element) && !prefersReducedMotion();
+    const from = element?.getBoundingClientRect();
+
+    // Hidden right away: the dragged card has just been put on top of it
+    if (animate) setLeavingCardId(cardId);
+    const swapped = await play(cardId);
+    if (!swapped || !animate || !discardRef.current) {
+      setLeavingCardId(null);
+      return swapped;
+    }
+
+    // The replaced card is now on top of the discard pile (hidden until the flight is over).
+    // A face-down card travels face down and flips over on the pile.
+    const { element: flyingCard, finished } = flyCard({
+      from,
+      to: discardRef.current.getBoundingClientRect(),
+      card: replaced.face_up ? replaced : { face_up: false },
+      duration: replaced.face_up ? 450 : 650,
+      flipAtTheEnd: !replaced.face_up,
+      easing: 'ease-in-out',
+    });
+    finished.then(async () => {
+      if (!replaced.face_up) setFlippedDiscardId(cardId);
+      setLeavingCardId(null);
+      // Let React show the real card before removing the flying one, so nothing blinks
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+      flyingCard.remove();
+    });
+    return swapped;
+  };
+
   // The card that can be dragged onto the grid: the card in hand, or the discard pile card before drawing
   const canDrag = !busy && (Boolean(myHand) || (canDraw && Boolean(discardTop)));
   const drag = useCardDrag({
     canDropOn: cardId => canDrag && me.grid.some(card => card.id === cardId),
-    onDrop: cardId => (myHand ? onSwap(cardId) : onTakeAndSwap(cardId)),
+    onDrop: cardId => swapAndThrow(cardId, myHand ? onSwap : onTakeAndSwap),
     // Clicking the discard pile card takes it
     onClick: () => {
       if (!myHand && canDraw) onDraw('discard_pile');
@@ -77,7 +120,7 @@ export default function GameTable({
   // The dragged card stays hidden until the move is over, even if it changes place in between
   const isLifted = card => Boolean(card) && card.id === drag.draggedCardId;
   const liftedClass = card => (isLifted(card) ? 'card--lifted' : '');
-  const isCardHidden = card => isDealtLater(card) || isLifted(card);
+  const isCardHidden = card => isDealtLater(card) || isLifted(card) || card.id === leavingCardId;
 
   // --- Clicks on the player's own grid ---
   // During the initial reveal: reveal a card, until 2 are face up.
@@ -131,6 +174,8 @@ export default function GameTable({
   } else {
     let discardClassName = '';
     if (dealing) discardClassName = landedCount < dealtCards ? 'card--hidden' : 'card--flip-in';
+    else if (discardTop && discardTop.id === leavingCardId) discardClassName = 'card--hidden';
+    else if (discardTop && discardTop.id === flippedDiscardId) discardClassName = 'card--flip-in';
     // Before drawing, the discard pile card can be dragged straight onto the grid
     discardPile = (
       <Card
@@ -151,6 +196,7 @@ export default function GameTable({
         discardLabel={discardLabel}
         discardInactive={Boolean(myHand) && myHand.drawn_from !== 'discard_pile'}
         pileRef={pileRef}
+        discardRef={discardRef}
         entering={dealing}
       >
         {me && (

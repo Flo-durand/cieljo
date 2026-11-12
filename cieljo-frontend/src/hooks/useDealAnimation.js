@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import flyCard from '../utils/flyCard';
 
 // Timings of the deal animation (about 10 seconds in total)
 const INTRO_MS = 800; // the room code fades out and the draw pile fades in (see RoomCode.scss, TableCenter.scss)
@@ -57,31 +58,18 @@ export default function useDealAnimation(deal, pileRef, onEnd) {
         return;
       }
 
-      const from = pile.getBoundingClientRect();
-      const to = target.getBoundingClientRect();
-      const moved = `translate(${to.left - from.left}px, ${to.top - from.top}px) ` +
-        `scale(${to.width / from.width}, ${to.height / from.height})`;
-
-      const flyingCard = document.createElement('div');
-      flyingCard.className = 'card card--face-down card--flying';
-      Object.assign(flyingCard.style, {
-        left: `${from.left}px`,
-        top: `${from.top}px`,
-        width: `${from.width}px`,
-        height: `${from.height}px`,
+      const { element: flyingCard, finished } = flyCard({
+        from: pile.getBoundingClientRect(),
+        to: target.getBoundingClientRect(),
+        duration,
+        flipAtTheEnd,
       });
-      document.body.appendChild(flyingCard);
       flyingCards.push(flyingCard);
 
-      const keyframes = flipAtTheEnd
-        ? [{ transform: 'none' }, { transform: moved, offset: 0.7 }, { transform: `${moved} rotateY(90deg)` }]
-        : [{ transform: 'none' }, { transform: moved }];
-
-      // fill: 'forwards' keeps the flying card on its target until it is removed
-      flyingCard.animate(keyframes, { duration, easing: 'ease-out', fill: 'forwards' }).onfinish = () => {
+      finished.then(() => {
         landedFlyingCardsRef.current.push(flyingCard);
         land();
-      };
+      });
     };
 
     const { cardIds, discardCardId } = deal;
