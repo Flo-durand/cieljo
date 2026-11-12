@@ -291,4 +291,120 @@ class Api::V1::GamesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :forbidden
   end
+
+  # --- Turns ---
+
+  def play(action, user, params = {})
+    post url_for([ action, :api_v1, :game, { room_code: "ABCD" } ]), params: params, headers: auth_headers(user), as: :json
+  end
+
+  # Starts game one and skips the initial reveal: player one plays first
+  def start_turns
+    game = prepare_game_one
+    start("ABCD", users(:one))
+    game.update!(current_player: game.players.find_by(user: users(:one)))
+    game
+  end
+
+  def show_as(user)
+    get api_v1_game_url("ABCD"), headers: auth_headers(user), as: :json
+    response.parsed_body["data"]
+  end
+
+  test "drawing shows the card in hand to every player" do
+    game = start_turns
+
+    play(:draw, users(:one), source: "draw_pile")
+
+    assert_response :ok
+    hand = response.parsed_body.dig("data", "hand")
+    card = game.cards.find_by(location: "hand")
+    assert_equal card.value, hand["value"]
+    assert_equal "draw_pile", hand["drawn_from"]
+
+    data = show_as(users(:two))
+    assert_equal card.id, data.dig("hand", "id")
+    assert_equal card.value, data.dig("hand", "value")
+    assert_equal game.players.find_by(user: users(:one)).id, data.dig("hand", "player_id")
+    assert_equal 124, data["draw_pile_count"], "the card in hand is no longer in the draw pile"
+  end
+
+  test "shows no card in hand before drawing" do
+    start_turns
+
+    assert_nil show_as(users(:one))["hand"]
+  end
+
+  test "swapping ends the turn" do
+    game = start_turns
+    play(:draw, users(:one), source: "discard_pile")
+    replaced = grid_of(game, :one).first
+
+    play(:swap, users(:one), card_id: replaced.id)
+
+    assert_response :ok
+    data = response.parsed_body["data"]
+    assert_equal game.players.find_by(user: users(:two)).id, data["current_player_id"]
+    assert_equal 2, data["turn_number"]
+    assert_nil data["hand"]
+
+    discard_top = show_as(users(:two))["discard_top"]
+    assert_equal replaced.id, discard_top["id"]
+    assert_equal replaced.value, discard_top["value"], "the replaced card is face up on the discard pile"
+  end
+
+  test "discarding reveals the chosen card and ends the turn" do
+    game = start_turns
+    play(:draw, users(:one), source: "draw_pile")
+    revealed = grid_of(game, :one).first
+
+    play(:discard, users(:one), card_id: revealed.id)
+
+    assert_response :ok
+    assert_equal game.players.find_by(user: users(:two)).id, response.parsed_body.dig("data", "current_player_id")
+    grid = show_as(users(:two))["players"].find { |player| player["username"] == "player_one" }["grid"]
+    assert_equal revealed.value, grid.find { |card| card["id"] == revealed.id }["value"]
+  end
+
+  test "a refused turn action returns the reason" do
+    start_turns
+
+    play(:draw, users(:two), source: "draw_pile")
+
+    assert_response :unprocessable_entity
+    assert_equal "It is not your turn.", response.parsed_body["error"]
+  end
+
+  test "rejects an unknown draw source" do
+    start_turns
+
+    play(:draw, users(:one), source: "anywhere")
+
+    assert_response :unprocessable_entity
+    assert_equal "You can only draw from the draw pile or the discard pile.", response.parsed_body["error"]
+  end
+
+  test "turn actions are only for the players of the game" do
+    start_turns
+    outsider = User.create!(email: "three@example.com", username: "player_three", password: "password123")
+
+    %i[draw swap discard].each do |action|
+      play(action, outsider, source: "draw_pile", card_id: 1)
+      assert_response :forbidden
+    end
+  end
+
+  test "turn actions return 404 for an unknown room" do
+    post draw_api_v1_game_url("ZZZZ"), params: { source: "draw_pile" }, headers: auth_headers(users(:one)), as: :json
+
+    assert_response :not_found
+  end
+
+  test "turn actions require authentication" do
+    start_turns
+
+    post draw_api_v1_game_url("ABCD"), params: { source: "draw_pile" }, as: :json
+
+    assert_response :unauthorized
+  end
 end

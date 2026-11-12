@@ -45,6 +45,41 @@
     }
   }
 
+  // A card the player can drag: the finger drags it instead of scrolling the page
+  &--draggable {
+    cursor: grab;
+    touch-action: none;
+    transition: transform 0.1s, box-shadow 0.1s;
+
+    &:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 0 0 3px $color-highlight;
+    }
+  }
+
+  // The copy that follows the pointer during a drag (see hooks/useCardDrag.js)
+  &--dragging {
+    position: fixed;
+    z-index: 1000;
+    margin: 0;
+    pointer-events: none;
+    cursor: grabbing;
+    box-shadow: 0 8px 20px rgba($color-black, 0.4);
+    transform-origin: top left;
+    transition: none;
+  }
+
+  // The dragged card stays in place but invisible while its copy moves
+  &--lifted {
+    visibility: hidden;
+  }
+
+  // The card under the dragged card, where it would be dropped
+  &--drop-target {
+    transform: translateY(-4px);
+    box-shadow: 0 0 0 3px $color-highlight;
+  }
+
   // Not dealt yet: keeps its place in the layout so the deal animation can aim at it
   &--hidden {
     visibility: hidden;

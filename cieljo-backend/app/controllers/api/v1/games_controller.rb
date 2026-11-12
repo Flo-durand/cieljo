@@ -1,6 +1,6 @@
 class Api::V1::GamesController < ApplicationController
-  before_action :set_game, only: %i[show start reveal]
-  before_action :set_current_player, only: %i[show reveal]
+  before_action :set_game, only: %i[show start reveal draw swap discard]
+  before_action :set_current_player, only: %i[show reveal draw swap discard]
 
   def show
     players = @game.players.includes(:user).order(:turn_order)
@@ -25,6 +25,8 @@ class Api::V1::GamesController < ApplicationController
           }
         end,
         draw_pile_count: @game.cards.where(location: "draw_pile").count,
+        # The card the current player has drawn, visible to everyone, or nil
+        hand: hand_json,
         # The last card put on the discard pile is the visible one
         discard_top: card_json(@game.cards.where(location: "discard_pile").order(:updated_at, :id).last)
       }
@@ -132,7 +134,46 @@ class Api::V1::GamesController < ApplicationController
     render json: { error: e.message }, status: :unprocessable_entity
   end
 
+  # POST /api/v1/games/:room_code/draw with { source: "draw_pile" | "discard_pile" }
+  def draw
+    play_turn("Card drawn.") { |turn| turn.draw(params[:source].to_s) }
+  end
+
+  # POST /api/v1/games/:room_code/swap with { card_id }
+  def swap
+    play_turn("Card swapped.") { |turn| turn.swap(params[:card_id]) }
+  end
+
+  # POST /api/v1/games/:room_code/discard with { card_id } (the face-down card to reveal)
+  def discard
+    play_turn("Card discarded.") { |turn| turn.discard(params[:card_id]) }
+  end
+
   private
+
+  def play_turn(message)
+    yield TurnService.new(@game, @player)
+
+    render json: {
+      status: { code: 200, message: message },
+      data: {
+        game_id: @game.id,
+        room_code: @game.room_code,
+        current_player_id: @game.current_player_id,
+        turn_number: @game.turn_number,
+        hand: hand_json
+      }
+    }, status: :ok
+  rescue TurnService::Error => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  def hand_json
+    card = @game.cards.find_by(location: "hand")
+    return nil unless card
+
+    card_json(card).merge(player_id: card.player_id, drawn_from: @game.drawn_from)
+  end
 
   def set_game
     @game = Game.find_by(room_code: params[:room_code].to_s.strip.upcase)
