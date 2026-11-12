@@ -64,47 +64,57 @@ export default function GameTable({
   const holder = hand && players.find(player => player.id === hand.player_id);
   const holderLabel = holder?.current_user ? 'Your card' : `${holder?.username}'s card`;
 
-  // --- Swap animation: the replaced grid card flies to the discard pile ---
+  // --- Animations of the cards thrown onto the discard pile ---
   const discardRef = useRef(null);
-  // The replaced card, hidden from the swap until it lands on the discard pile
+  // The thrown card, hidden on the discard pile until its flying copy lands there
   const [leavingCardId, setLeavingCardId] = useState(null);
-  // A replaced card that was face down: it flips over once on the discard pile
+  // A thrown card that was face down: it flips over once on the discard pile
   const [flippedDiscardId, setFlippedDiscardId] = useState(null);
 
-  const swapAndThrow = async (cardId, play) => {
-    const replaced = me.grid.find(card => card.id === cardId);
-    const element = document.querySelector(`[data-card-id="${cardId}"]`);
-    const animate = Boolean(replaced && element) && !prefersReducedMotion();
-    const from = element?.getBoundingClientRect();
+  // Plays a move that throws `card` onto the discard pile, then makes it fly there from `fromElement`.
+  // The flight starts once the move is played, so a refused move never shows. A face-down card travels
+  // face down and flips over on the pile.
+  const throwToDiscard = async (card, fromElement, play) => {
+    const animate = Boolean(card && fromElement) && !prefersReducedMotion();
+    const from = fromElement?.getBoundingClientRect();
 
-    // Hidden right away: the dragged card has just been put on top of it
-    if (animate) setLeavingCardId(cardId);
-    const swapped = await play(cardId);
-    if (!swapped || !animate || !discardRef.current) {
+    if (animate) setLeavingCardId(card.id);
+    const played = await play();
+    if (!played || !animate || !discardRef.current) {
       setLeavingCardId(null);
-      return swapped;
+      return played;
     }
 
-    // The replaced card is now on top of the discard pile (hidden until the flight is over).
-    // A face-down card travels face down and flips over on the pile.
     const { element: flyingCard, finished } = flyCard({
       from,
       to: discardRef.current.getBoundingClientRect(),
-      card: replaced.face_up ? replaced : { face_up: false },
-      duration: replaced.face_up ? 450 : 650,
-      flipAtTheEnd: !replaced.face_up,
+      card: card.face_up ? card : { face_up: false },
+      duration: card.face_up ? 450 : 650,
+      flipAtTheEnd: !card.face_up,
       easing: 'ease-in-out',
     });
     finished.then(async () => {
-      if (!replaced.face_up) setFlippedDiscardId(cardId);
+      if (!card.face_up) setFlippedDiscardId(card.id);
       setLeavingCardId(null);
       // Let React show the real card before removing the flying one, so nothing blinks
       await new Promise(requestAnimationFrame);
       await new Promise(requestAnimationFrame);
       flyingCard.remove();
     });
-    return swapped;
+    return played;
   };
+
+  // Swap: the replaced grid card goes from the grid to the discard pile.
+  // It is hidden in the grid right away, since the dragged card has just been put on top of it.
+  const swapAndThrow = (cardId, play) => throwToDiscard(
+    me.grid.find(card => card.id === cardId),
+    document.querySelector(`[data-card-id="${cardId}"]`),
+    () => play(cardId),
+  );
+
+  // Discard: the card drawn from the draw pile goes from the draw pile to the discard pile,
+  // and the clicked grid card flips over (see Card.jsx)
+  const discardAndThrow = cardId => throwToDiscard(myHand, pileRef.current, () => onDiscard(cardId));
 
   // The card that can be dragged onto the grid: the card in hand, or the discard pile card before drawing
   const canDrag = !busy && (Boolean(myHand) || (canDraw && Boolean(discardTop)));
@@ -128,7 +138,7 @@ export default function GameTable({
   const canRevealCard = card => !dealing && initialReveal && !card.face_up && faceUpCount(me) < INITIAL_REVEAL_COUNT;
   const canDiscardFor = card => !busy && myHand?.drawn_from === 'draw_pile' && !card.face_up;
   const canClickCard = card => canRevealCard(card) || canDiscardFor(card);
-  const onCardClick = card => (initialReveal ? onRevealCard(card.id) : onDiscard(card.id));
+  const onCardClick = card => (initialReveal ? onRevealCard(card.id) : discardAndThrow(card.id));
 
   const renderPlayer = (player, { small }) => (
     <PlayerGrid
