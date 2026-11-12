@@ -109,7 +109,8 @@ export default function GameTable({
       <Card
         card={hand}
         onPointerDown={myHand ? onPointerDown : undefined}
-        className={`card--flip-in ${liftedClass(hand)}`.trim()}
+        // The card flips over by itself as it turns face up (see Card.jsx)
+        className={liftedClass(hand)}
       />
     );
     drawLabel = holderLabel;
