@@ -318,13 +318,8 @@ Devise.setup do |config|
   config.jwt do |jwt|
     jwt.secret = ENV["JWT_SECRET_KEY"] || Rails.application.credentials.jwt_secret_key
 
-    # Tell Devise to read and send the token in the Authorization header
-    jwt.dispatch_requests = [
-      [ "POST", %r{^/api/v1/users/sign_in$} ]
-    ]
-    jwt.revocation_requests = [
-      [ "DELETE", %r{^/api/v1/users/sign_out$} ]
-    ]
+    # No dispatch or revocation paths for devise-jwt's middleware: our own controllers create, check and revoke
+    # the tokens (see config/initializers/devise_jwt_requests.rb, which also clears the paths devise-jwt adds)
 
     # Token lifetime (e.g. 1 day)
     jwt.expiration_time = 1.day.to_i

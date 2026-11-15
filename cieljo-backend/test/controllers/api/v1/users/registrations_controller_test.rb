@@ -34,16 +34,15 @@ class Api::V1::Users::RegistrationsControllerTest < ActionDispatch::IntegrationT
     assert_response :created
   end
 
-  # Devise's other routes do not work with the JWT flow and are not exposed (see config/routes.rb).
-  # DELETE /api/v1/users/sign_out is left out on purpose: devise-jwt's revocation middleware handles it before
-  # routing and fails on its scope (:user in our tokens, :api_v1_user for Devise), as it already did before.
-  # Nothing uses it; a real server-side logout is planned (audit M1).
+  # Devise's other routes do not work with the JWT flow and are not exposed (see config/routes.rb), and
+  # devise-jwt's middleware no longer acts on any path (see config/initializers/devise_jwt_requests.rb)
   test "the unused Devise routes do not exist" do
     token, _payload = Warden::JWTAuth::UserEncoder.new.call(users(:one), :user, nil)
     headers = { "Authorization" => "Bearer #{token}" }
 
     [
       [ :post, "/api/v1/users/sign_in" ],
+      [ :delete, "/api/v1/users/sign_out" ],
       [ :post, "/api/v1/users/password" ],
       [ :get, "/api/v1/users/edit" ],
       [ :put, "/api/v1/users" ],
@@ -52,5 +51,17 @@ class Api::V1::Users::RegistrationsControllerTest < ActionDispatch::IntegrationT
       send(verb, path, headers: headers, as: :json)
       assert_response :not_found, "#{verb.upcase} #{path} should not exist"
     end
+  end
+
+  test "devise-jwt's middleware does not act on any request" do
+    assert_empty Warden::JWTAuth.config.dispatch_requests
+    assert_empty Warden::JWTAuth.config.revocation_requests
+  end
+
+  test "signing up does not log the user in" do
+    sign_up(email: "nosession@example.com", password: "password123", username: "nosession")
+
+    assert_nil response.headers["Authorization"]
+    assert_nil response.parsed_body.dig("data", "token")
   end
 end
