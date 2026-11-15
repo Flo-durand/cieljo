@@ -24,7 +24,8 @@ export function clearSession() {
 
 // Sends an authenticated request to the API (path like '/games') and returns the response.
 // When the API answers 401, the session has expired or was revoked (for example after a logout on another
-// device): the local session is cleared and the login page opens with a message. The returned promise then
+// device): the local session is cleared and the login page opens with a message, then brings the user back
+// to the current page. The returned promise then
 // never resolves, so the page that made the request shows no error while it is replaced.
 export async function apiFetch(path, { method = 'GET', body } = {}) {
   const response = await fetch(`${API_URL}${path}`, {
@@ -35,7 +36,9 @@ export async function apiFetch(path, { method = 'GET', body } = {}) {
 
   if (response.status === 401) {
     clearSession();
-    window.location.assign('/auth?expired=1');
+    // Come back to the current page once logged in again
+    const next = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.assign(`/auth?expired=1&next=${next}`);
     return new Promise(() => {});
   }
   return response;
