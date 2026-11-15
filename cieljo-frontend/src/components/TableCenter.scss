@@ -1,8 +1,10 @@
+@use '../styles/variables' as *;
+
 .table-center {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: scaled(16px);
 
   // Starts once the room code has faded out (see RoomCode.scss and INTRO_MS in useDealAnimation.js)
   &--entering {
@@ -12,7 +14,7 @@
   &__piles {
     display: flex;
     justify-content: center;
-    gap: 30px;
+    gap: scaled(30px);
   }
 
   // A fixed width, so the piles do not move when a label changes ("Draw pile (124)" -> "Your card")
@@ -21,7 +23,7 @@
     flex-direction: column;
     align-items: center;
     gap: 6px;
-    width: 120px;
+    width: scaled(120px);
     font-size: 14px;
     transition: opacity 0.2s;
 

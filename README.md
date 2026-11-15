@@ -64,6 +64,8 @@ The frontend calls the API at `http://localhost:3000/api/v1`, and CORS only allo
 
 The game room refreshes every 3 seconds, so the other players see your actions with a short delay.
 
+The table follows the size of your window: on a computer or a tablet in landscape, it grows or shrinks to fit the screen (phones in portrait are not supported yet).
+
 ## API overview
 
 All routes are under `/api/v1`. Every endpoint except sign-up and login needs an `Authorization: Bearer <token>` header.
@@ -143,6 +145,7 @@ npm run build
 - [x] Column removal (3 identical face-up cards), with its animation
 - [ ] End of round and scoring
 - [x] Up to 8 players, seated around a table of fixed width
-- [ ] A table that adapts to the size of the screen
+- [x] A table that adapts to the size of the screen (computers and tablets)
+- [ ] A layout for phones in portrait
 - [ ] Real-time updates with Action Cable (the game room polls the API for now)
 - [ ] Friends and invitations

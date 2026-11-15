@@ -5,22 +5,22 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: scaled(8px);
 
   // Small enough to stay on one line in the middle of the table (see TableLayout.scss)
   &__code {
     margin: 0;
-    font-size: 32px;
+    font-size: scaled(32px);
     white-space: nowrap;
     color: $color-highlight;
-    letter-spacing: 2px;
+    letter-spacing: scaled(2px);
   }
 
   // An empty line keeps its height
   &__line {
     min-height: 1.2em;
     margin: 0;
-    font-size: 15px;
+    font-size: max(12px, #{scaled(15px)});
     opacity: 0.85;
   }
 
@@ -29,7 +29,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 48px;
+    min-height: scaled(48px);
   }
 
   // When the game starts, the room code fades out over the draw pile, which fades in
