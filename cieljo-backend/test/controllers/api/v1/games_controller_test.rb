@@ -453,4 +453,17 @@ class Api::V1::GamesControllerTest < ActionDispatch::IntegrationTest
     assert_equal positions.sort, grid.map { |card| [ card["id"], card["row"], card["column"] ] }.sort
     assert_equal 5, data.dig("discard_top", "value")
   end
+  test "the game details list the last discarded cards, oldest first" do
+    game = start_turns
+    replaced = prepare_column_of_fives(game)
+    under = game.cards.where(location: "discard_pile").order(:updated_at, :id).last
+
+    play(:swap, users(:one), card_id: replaced.id)
+
+    recent = show_as(users(:two))["discard_recent"]
+    assert_equal 5, recent.size
+    assert_equal [ under.id, replaced.id ], recent.first(2).map { |card| card["id"] }
+    assert_equal [ 5, 5, 5 ], recent.last(3).map { |card| card["value"] }
+    assert_equal replaced.value, recent[1]["value"], "a discarded card is face up, so its value is sent"
+  end
 end
