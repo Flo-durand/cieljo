@@ -34,10 +34,26 @@ export default function GameRoom() {
   const lastStatusRef = useRef(null);
   const handleDealEnd = useCallback(() => setDeal(null), []);
 
+  // Loads of the game can cross (the refresh every few seconds and the reload after an action): every load gets
+  // a number, and an answer is shown only if it is newer than the one on screen. Otherwise a late answer to an
+  // older request would bring back the game as it was before, for a few seconds.
+  const loadCountRef = useRef(0);
+  const shownLoadRef = useRef(0);
+
   const loadGame = useCallback(async () => {
+    loadCountRef.current += 1;
+    const loadNumber = loadCountRef.current;
+    // False when a newer load is already on screen: this answer is outdated
+    const isLatest = () => {
+      if (loadNumber <= shownLoadRef.current) return false;
+      shownLoadRef.current = loadNumber;
+      return true;
+    };
+
     try {
       const response = await apiFetch(`/games/${room_code}`);
       const data = await response.json();
+      if (!isLatest()) return;
 
       if (response.ok) {
         // Only animate a start seen live: reopening a started game shows the cards right away
@@ -60,7 +76,7 @@ export default function GameRoom() {
         setError(data.error || 'Could not load the game.');
       }
     } catch (err) {
-      setError(`Could not reach the backend server. Details: ${err.message || err}`);
+      if (isLatest()) setError(`Could not reach the backend server. Details: ${err.message || err}`);
     }
   }, [room_code]);
 
