@@ -50,4 +50,69 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :bad_request
   end
+  # --- Logout ---
+
+  def token_for(user)
+    token, _payload = Warden::JWTAuth::UserEncoder.new.call(user, :user, nil)
+    "Bearer #{token}"
+  end
+
+  def logout(token)
+    delete api_v1_auth_logout_url, headers: { "Authorization" => token }, as: :json
+  end
+
+  test "logging out revokes the token" do
+    token = token_for(users(:one))
+
+    logout(token)
+
+    assert_response :ok
+    assert_equal "Logged out successfully.", response.parsed_body.dig("status", "message")
+    get api_v1_me_url, headers: { "Authorization" => token }, as: :json
+    assert_response :unauthorized
+  end
+
+  test "logging out revokes every token of the user (all devices)" do
+    laptop = token_for(users(:one))
+    phone = token_for(users(:one))
+
+    logout(laptop)
+
+    get api_v1_me_url, headers: { "Authorization" => phone }, as: :json
+    assert_response :unauthorized
+  end
+
+  test "the user can log in again after logging out" do
+    logout(token_for(users(:one)))
+
+    login(user: { email: "one@example.com", password: "password123" })
+    assert_response :ok
+
+    get api_v1_me_url, headers: { "Authorization" => response.parsed_body.dig("data", "token") }, as: :json
+    assert_response :ok
+  end
+
+  test "logging out does not affect the other users" do
+    other = token_for(users(:two))
+
+    logout(token_for(users(:one)))
+
+    get api_v1_me_url, headers: { "Authorization" => other }, as: :json
+    assert_response :ok
+  end
+
+  test "logging out requires a valid session" do
+    delete api_v1_auth_logout_url, as: :json
+
+    assert_response :unauthorized
+  end
+
+  test "a revoked token cannot log out again" do
+    token = token_for(users(:one))
+    logout(token)
+
+    logout(token)
+
+    assert_response :unauthorized
+  end
 end

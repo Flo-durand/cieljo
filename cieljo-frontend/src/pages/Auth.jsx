@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { API_URL, jsonHeaders } from '../api';
 import './Auth.scss';
 
@@ -7,7 +7,15 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
-  const [message, setMessage] = useState('');
+  // The API sends here with ?expired=1 when the session has expired or was revoked (see apiFetch in api.js)
+  const [searchParams] = useSearchParams();
+  const [message, setMessage] = useState(
+    searchParams.get('expired') ? 'Your session has expired. Please log in again.' : ''
+  );
+  // Where to go once logged in (a protected page sends here with ?next=/game/ABCD). Only a path of this site
+  // is accepted ("/..." but not "//..."), so a crafted link cannot send the user to another site.
+  const next = searchParams.get('next') ?? '';
+  const nextPage = next.startsWith('/') && !next.startsWith('//') ? next : '/';
   const [isLoginMode, setIsLoginMode] = useState(true);
 
   const navigate = useNavigate();
@@ -51,7 +59,7 @@ export default function Auth() {
         if (jwtToken) {
           localStorage.setItem('token', jwtToken);
           localStorage.setItem('username', data.data.username);
-          navigate('/');
+          navigate(nextPage);
         }
       } else {
         setMessage(`Login failed: ${data.error || "Invalid credentials."}`);

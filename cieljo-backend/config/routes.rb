@@ -18,6 +18,11 @@ Rails.application.routes.draw do
 
       # --- Custom login route (outside Devise) ---
       post "auth/login", to: "auth#login", defaults: { format: :json }
+      # Revokes every token of the logged-in user (all their devices)
+      delete "auth/logout", to: "auth#logout", defaults: { format: :json }
+
+      # GET /api/v1/me returns the logged-in user (and tells the frontend whether the session is still valid)
+      resource :me, only: :show, controller: "me"
 
       # --- Game routes ---
       # GET /api/v1/games/:room_code returns the game and its players

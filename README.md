@@ -64,6 +64,8 @@ The frontend calls the API at `http://localhost:3000/api/v1`, and CORS only allo
 
 The game room refreshes every 3 seconds, so the other players see your actions with a short delay.
 
+Sessions last 24 hours. When a session has expired, or after logging out (which logs you out on all your devices), the app sends you to the login page and brings you back to the page you were on, such as a game room opened from a link.
+
 The table follows the size of your window: on a computer or a tablet in landscape, it grows or shrinks to fit the screen (phones in portrait are not supported yet).
 
 ## API overview
@@ -74,6 +76,8 @@ All routes are under `/api/v1`. Every endpoint except sign-up and login needs an
 | --- | --- | --- |
 | `POST` | `/users` | Sign up with `{ user: { email, password, username } }` (5 per hour per IP address) |
 | `POST` | `/auth/login` | Log in with `{ user: { email, password } }`. Returns the token in `data.token`; 401 for wrong credentials, 400 without credentials (10 attempts per 3 minutes per IP address) |
+| `DELETE` | `/auth/logout` | Log out: revokes every token of the user, on all their devices |
+| `GET` | `/me` | The logged-in user (`id`, `email`, `username`) |
 | `POST` | `/games` | Create a game room. The current user becomes the host (10 per minute per user) |
 | `GET` | `/games/:room_code` | Get a game, its players and their grids, the piles (with the last 5 discarded cards) and the current player (players only). The values of face-down cards are never sent |
 | `POST` | `/games/join` | Join a pending game with `{ room_code }` (8 players maximum) |
@@ -83,7 +87,7 @@ All routes are under `/api/v1`. Every endpoint except sign-up and login needs an
 | `POST` | `/games/:room_code/swap` | Put the card in your hand in place of a grid card `{ card_id }`, which goes onto the discard pile. Removes a completed column, returned as `removed_column`. Ends the turn |
 | `POST` | `/games/:room_code/discard` | Throw a card drawn from the draw pile and reveal a face-down grid card `{ card_id }`. Removes a completed column, returned as `removed_column`. Ends the turn |
 
-Account routes: only sign-up (`POST /users`) and login (`POST /auth/login`) exist. Devise's other routes (sign in/out, password, account edit or delete) are not exposed because they do not work with the JWT flow; editing or deleting an account and "forgot password" emails are planned as dedicated endpoints.
+Account routes: only sign-up (`POST /users`), login (`POST /auth/login`), logout (`DELETE /auth/logout`) and the current user (`GET /me`) exist. Devise's other routes (sign in/out, password, account edit or delete) are not exposed because they do not work with the JWT flow; editing or deleting an account and "forgot password" emails are planned as dedicated endpoints.
 
 **Rate limits**: logins (10 per 3 minutes per IP address), sign-ups (5 per hour per IP address) and new games (`POST /games`, 10 per minute per user) are limited. Over the limit, the API answers `429 Too Many Requests` with a JSON error.
 
