@@ -83,13 +83,28 @@ export default function GameRoom() {
     }
   }, [room_code]);
 
-  // Loads the game now, then every few seconds
+  // Loads the game now, then every few seconds, but only while the tab is visible: a hidden tab stops asking
+  // the server, and catches up as soon as it is shown again
   useEffect(() => {
-    // loadGame only sets state after the request has answered (after await), not synchronously
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadGame();
-    const intervalId = setInterval(loadGame, REFRESH_INTERVAL_MS);
-    return () => clearInterval(intervalId);
+    let intervalId = null;
+
+    const startRefreshing = () => {
+      if (intervalId) return;
+      loadGame();
+      intervalId = setInterval(loadGame, REFRESH_INTERVAL_MS);
+    };
+    const stopRefreshing = () => {
+      clearInterval(intervalId);
+      intervalId = null;
+    };
+    const onVisibilityChange = () => (document.hidden ? stopRefreshing() : startRefreshing());
+
+    if (!document.hidden) startRefreshing();
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      stopRefreshing();
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [loadGame]);
 
   // Sends an action on the game, then reloads it (unless reload is false).
