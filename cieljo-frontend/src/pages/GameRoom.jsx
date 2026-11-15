@@ -156,18 +156,13 @@ export default function GameRoom() {
   );
 
   return (
+    // The title on the left of the table and the leave button on its right. The error message sits under the
+    // title, so the table never moves when one shows up.
     <div className="game-room">
-      <div className="game-room__header">
-        <h2>🎰 Skyjo table: Cieljo</h2>
-        <button
-          onClick={handleLeaveGame}
-          className="btn btn--danger"
-        >
-          Leave the table
-        </button>
+      <div className="game-room__side game-room__side--left">
+        <h2 className="game-room__title">🎰 Skyjo table: Cieljo</h2>
+        {error && <p className="game-room__error">{error}</p>}
       </div>
-
-      {error && <p className="game-room__error">{error}</p>}
 
       {status === 'pending' ? lobby : (
         <GameTable
@@ -189,6 +184,12 @@ export default function GameRoom() {
           onDealEnd={handleDealEnd}
         />
       )}
+
+      <div className="game-room__side game-room__side--right">
+        <button onClick={handleLeaveGame} className="btn btn--danger">
+          Leave the table
+        </button>
+      </div>
     </div>
   );
 }

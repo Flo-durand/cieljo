@@ -14,7 +14,7 @@
   gap: 30px 24px;
   align-items: center;
   width: fit-content;
-  margin: 30px auto;
+  margin: auto;
   padding: 30px;
   border-radius: 40px;
   background-color: $color-table;
@@ -37,7 +37,8 @@
     }
   }
 
-  // Same size before and after the start (room code, then piles), so the table does not jump
+  // Same size before and after the start (room code, then piles), so the table does not jump: a fixed height
+  // that holds the room code with its 3 lines and the start button, and the piles during the game
   &__center {
     grid-area: center;
     position: relative;
@@ -48,7 +49,7 @@
     // As wide as the middle column, padding included, so the room code and the piles never move the seats
     box-sizing: border-box;
     width: 100%;
-    min-height: 220px;
+    height: 260px;
     padding: 20px;
   }
 

@@ -1,6 +1,8 @@
 @use 'variables' as *;
 
 body {
+  // Remove the browser's default 8 px margin around the page
+  margin: 0;
   font-family: $font-family-base;
 }
 
