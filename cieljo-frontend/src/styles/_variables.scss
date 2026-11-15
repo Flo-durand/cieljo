@@ -18,6 +18,15 @@ $color-text-muted: #666;
 $color-text-soft: #555;
 $color-text-faded: #999;
 
+// Cards and grids (a grid has 4 columns of 3 cards)
+$card-width: 56px;
+$card-height: 80px;
+$card-small-width: 30px;
+$card-small-height: 43px;
+$grid-gap: 6px;
+$grid-small-gap: 3px;
+$grid-columns: 4;
+
 // Typography
 $font-family-base: sans-serif;
 

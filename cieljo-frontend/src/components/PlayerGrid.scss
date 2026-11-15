@@ -1,25 +1,35 @@
 @use '../styles/variables' as *;
 
+// A seat as wide as a full grid, whatever the number of columns left: the grid closes up inside it, centered
 .player-grid {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  width: $grid-columns * $card-width + ($grid-columns - 1) * $grid-gap;
+
+  &--small {
+    width: $grid-columns * $card-small-width + ($grid-columns - 1) * $grid-small-gap;
+  }
 
   // Every name has the same padding, so highlighting the player whose turn it is only changes colors
   // and nothing moves when the turn passes to the next player
   &__name {
+    max-width: 100%;
+    overflow: hidden;
     padding: 2px 10px;
+    box-sizing: border-box;
+    white-space: nowrap;
+    text-overflow: ellipsis;
     border-radius: 10px;
     font-weight: bold;
     transition: background-color 0.2s, color 0.2s;
   }
 
-  // The API sends the cards ordered by row then column, so 4 columns rebuild the grid
+  // Each card is placed at its row and column by PlayerGrid.jsx, which also sets the number of columns
   &__cards {
     display: grid;
-    grid-template-columns: repeat(4, auto);
-    gap: 6px;
+    gap: $grid-gap;
   }
 
   // The player whose turn it is
@@ -33,6 +43,6 @@
   }
 
   &--small &__cards {
-    gap: 3px;
+    gap: $grid-small-gap;
   }
 }

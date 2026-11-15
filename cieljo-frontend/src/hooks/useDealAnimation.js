@@ -24,9 +24,6 @@ export function buildDeal(players, discardTop) {
   return { cardIds, discardCardId: discardTop?.id };
 }
 
-export const prefersReducedMotion = () =>
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
 // Plays the deal: each card flies from the draw pile to its place, found by its data-card-id.
 // Only transform is animated (no layout work). A landed flying card stays in place until React has
 // shown the real card, then it is removed before the next paint, so the card never blinks.

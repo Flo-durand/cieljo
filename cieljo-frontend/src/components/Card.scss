@@ -6,16 +6,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 80px;
+  width: $card-width;
+  height: $card-height;
   border-radius: $radius-md;
   font-size: 24px;
   font-weight: bold;
   user-select: none;
 
   &--small {
-    width: 30px;
-    height: 43px;
+    width: $card-small-width;
+    height: $card-small-height;
     border-radius: $radius-sm;
     font-size: 14px;
   }
