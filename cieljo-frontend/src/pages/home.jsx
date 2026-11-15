@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { API_URL, authHeaders } from '../api';
+import { apiFetch } from '../api';
 import './Home.scss';
 
 export default function Home() {
@@ -18,10 +18,7 @@ export default function Home() {
 
   const handleCreateGame = async () => {
     try {
-      const response = await fetch(`${API_URL}/games`, {
-        method: 'POST',
-        headers: authHeaders()
-      });
+      const response = await apiFetch('/games', { method: 'POST' });
 
       const data = await response.json();
 
@@ -45,11 +42,7 @@ export default function Home() {
   const handleJoinGame = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`${API_URL}/games/join`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ room_code: roomCode.trim() })
-      });
+      const response = await apiFetch('/games/join', { method: 'POST', body: { room_code: roomCode.trim() } });
 
       const data = await response.json();
 

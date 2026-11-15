@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { API_URL, authHeaders } from '../api';
+import { apiFetch } from '../api';
 import GameTable from '../components/GameTable';
 import PlayerGrid from '../components/PlayerGrid';
 import RoomCode from '../components/RoomCode';
@@ -36,7 +36,7 @@ export default function GameRoom() {
 
   const loadGame = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/games/${room_code}`, { headers: authHeaders() });
+      const response = await apiFetch(`/games/${room_code}`);
       const data = await response.json();
 
       if (response.ok) {
@@ -78,11 +78,7 @@ export default function GameRoom() {
   const postAction = async (action, body = {}, { reload = true } = {}) => {
     setIsActing(true);
     try {
-      const response = await fetch(`${API_URL}/games/${room_code}/${action}`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify(body),
-      });
+      const response = await apiFetch(`/games/${room_code}/${action}`, { method: 'POST', body });
       const data = await response.json();
 
       if (!response.ok) {

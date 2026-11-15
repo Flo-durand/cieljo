@@ -15,3 +15,28 @@ export const authHeaders = () => {
     'Authorization': token.startsWith('Bearer ') ? token : `Bearer ${token}`
   };
 };
+
+// Forgets the local session (token and username)
+export function clearSession() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('username');
+}
+
+// Sends an authenticated request to the API (path like '/games') and returns the response.
+// When the API answers 401, the session has expired or was revoked (for example after a logout on another
+// device): the local session is cleared and the login page opens with a message. The returned promise then
+// never resolves, so the page that made the request shows no error while it is replaced.
+export async function apiFetch(path, { method = 'GET', body } = {}) {
+  const response = await fetch(`${API_URL}${path}`, {
+    method,
+    headers: authHeaders(),
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+
+  if (response.status === 401) {
+    clearSession();
+    window.location.assign('/auth?expired=1');
+    return new Promise(() => {});
+  }
+  return response;
+}

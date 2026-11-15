@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { API_URL, jsonHeaders } from '../api';
 import './Auth.scss';
 
@@ -7,7 +7,11 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
-  const [message, setMessage] = useState('');
+  // The API sends here with ?expired=1 when the session has expired or was revoked (see apiFetch in api.js)
+  const [searchParams] = useSearchParams();
+  const [message, setMessage] = useState(
+    searchParams.get('expired') ? 'Your session has expired. Please log in again.' : ''
+  );
   const [isLoginMode, setIsLoginMode] = useState(true);
 
   const navigate = useNavigate();
