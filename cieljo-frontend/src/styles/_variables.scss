@@ -1,3 +1,5 @@
+@use 'sass:math';
+
 // Colors
 $color-primary: #007bff;
 $color-success: #28a745;
@@ -20,13 +22,21 @@ $color-text-faded: #999;
 
 // Cards and grids (a grid has 4 columns of 3 cards). Every card of the game has the same size, so a card
 // flying from a grid to a pile (or back) never has to change size.
-$card-width: 43px;
-$card-height: 62px;
-$card-font-size: 19px;
-$grid-gap: 5px;
+// The card width (--card-width, set in main.scss) follows the size of the screen, and every size of the
+// table is derived from it: scaled($px) is a size of the layout designed for 43 px wide cards.
+$design-card-width: 43px;
+
+@function scaled($size) {
+  @return calc(var(--card-width) * #{math.div($size, $design-card-width)});
+}
+
+$card-width: var(--card-width);
+$card-height: scaled(62px);
+$card-font-size: scaled(19px);
+$grid-gap: scaled(5px);
 $grid-columns: 4;
-// A player's seat is as wide as a full grid
-$seat-width: $grid-columns * $card-width + ($grid-columns - 1) * $grid-gap;
+// A player's seat is as wide as a full grid: 4 cards and 3 gaps
+$seat-width: scaled(187px);
 
 // Typography
 $font-family-base: sans-serif;

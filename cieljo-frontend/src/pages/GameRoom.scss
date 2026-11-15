@@ -1,8 +1,10 @@
 @use '../styles/variables' as *;
 
 .game-room {
-  // Three columns: the title, the table (always the same width) and the leave button
+  // Three columns: the title, the table and the leave button. On a narrower screen (see below), the title and
+  // the button go above the table, which keeps the whole width.
   display: grid;
+  grid-template-areas: 'title table button';
   grid-template-columns: 1fr auto 1fr;
   gap: 20px;
   align-items: start;
@@ -14,12 +16,29 @@
     padding-top: 30px;
 
     &--left {
+      grid-area: title;
       text-align: left;
     }
 
     &--right {
+      grid-area: button;
       display: flex;
       justify-content: flex-end;
+    }
+  }
+
+  > .table-layout {
+    grid-area: table;
+  }
+
+  @media (max-width: 1400px) {
+    grid-template-areas:
+      'title button'
+      'table table';
+    grid-template-columns: 1fr 1fr;
+
+    &__side {
+      padding-top: 0;
     }
   }
 
@@ -32,9 +51,10 @@
     font-weight: bold;
   }
 
+  // Follows the size of the cards, like the rest of the middle of the table
   &__start {
-    padding: 12px 30px;
-    font-size: 16px;
+    padding: scaled(12px) scaled(30px);
+    font-size: max(13px, #{scaled(16px)});
     font-weight: bold;
     border-radius: $radius-md;
   }
