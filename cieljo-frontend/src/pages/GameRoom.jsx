@@ -39,13 +39,16 @@ export default function GameRoom() {
   // older request would bring back the game as it was before, for a few seconds.
   const loadCountRef = useRef(0);
   const shownLoadRef = useRef(0);
+  // Loads numbered below this one are ignored: while an action is sent, the server may answer a load with the
+  // game as it was before the action (see postAction)
+  const firstValidLoadRef = useRef(0);
 
   const loadGame = useCallback(async () => {
     loadCountRef.current += 1;
     const loadNumber = loadCountRef.current;
     // False when a newer load is already on screen: this answer is outdated
     const isLatest = () => {
-      if (loadNumber <= shownLoadRef.current) return false;
+      if (loadNumber <= shownLoadRef.current || loadNumber < firstValidLoadRef.current) return false;
       shownLoadRef.current = loadNumber;
       return true;
     };
@@ -93,8 +96,13 @@ export default function GameRoom() {
   // Returns true when the action worked, so the drag and drop knows whether the card was played.
   const postAction = async (action, body = {}, { reload = true } = {}) => {
     setIsActing(true);
+    // While the action is sent, every load is ignored, even one started meanwhile: the server may have read
+    // the game before the action
+    firstValidLoadRef.current = Infinity;
     try {
       const response = await apiFetch(`/games/${room_code}/${action}`, { method: 'POST', body });
+      // The action is played (or refused): the loads started from now on show the game after it
+      firstValidLoadRef.current = loadCountRef.current + 1;
       const data = await response.json();
 
       if (!response.ok) {
@@ -107,6 +115,8 @@ export default function GameRoom() {
       setError(`Could not reach the backend server. Details: ${err.message || err}`);
       return false;
     } finally {
+      // The request failed before the server answered: let the next loads show the game again
+      if (firstValidLoadRef.current === Infinity) firstValidLoadRef.current = loadCountRef.current + 1;
       setIsActing(false);
     }
   };
