@@ -2,7 +2,7 @@
 
 Cieljo is a multiplayer online card game in the style of **Skyjo**. Players create or join a game room with a 4-character code and play against each other in their browser.
 
-> 🚧 Work in progress: accounts, game rooms, the deal, the reveal of the first cards and the turns work. Column removal, the end of the round and the scoring are still being built.
+> 🚧 Work in progress: accounts, game rooms, the deal, the reveal of the first cards, the turns and the removal of columns work. The end of the round and the scoring are still being built.
 
 ## Tech stack
 
@@ -57,7 +57,8 @@ The frontend calls the API at `http://localhost:3000/api/v1`, and CORS only allo
    - or **take the discard pile card** (click it, or drag it straight onto your grid) and drag it onto a card of your grid to swap them.
 
    The replaced card goes face up onto the discard pile, then the turn passes to the next player. The drag and drop works with a mouse, a finger or a pen.
-7. Click the **"i" button** in the bottom right corner of the table to see what to do and whose turn it is. A yellow dot appears on it when the message changes. The name of the player whose turn it is is highlighted in yellow.
+7. When a column of your grid holds **3 face-up cards of the same value**, it is removed: its cards fly to the discard pile and the remaining columns close up.
+8. Click the **"i" button** in the bottom right corner of the table to see what to do and whose turn it is. A yellow dot appears on it when the message changes. The name of the player whose turn it is is highlighted in yellow.
 
 > To test with several players on one computer, use a private window or another browser for each account: the login token is stored in `localStorage`, which is shared by the tabs of one browser.
 
@@ -72,13 +73,13 @@ All routes are under `/api/v1`. Every endpoint except sign-up and login needs an
 | `POST` | `/users` | Sign up |
 | `POST` | `/auth/login` | Log in. Returns the token in `data.token` |
 | `POST` | `/games` | Create a game room. The current user becomes the host |
-| `GET` | `/games/:room_code` | Get a game, its players and their grids, the piles and the current player (players only). The values of face-down cards are never sent |
+| `GET` | `/games/:room_code` | Get a game, its players and their grids, the piles (with the last 5 discarded cards) and the current player (players only). The values of face-down cards are never sent |
 | `POST` | `/games/join` | Join a pending game with `{ room_code }` |
 | `POST` | `/games/:room_code/start` | Start the game and deal the cards (host only, at least 2 players) |
 | `POST` | `/games/:room_code/reveal` | Reveal one of your first 2 cards with `{ card_id }` |
 | `POST` | `/games/:room_code/draw` | On your turn, take a card from `{ source: "draw_pile" \| "discard_pile" }` into your hand |
-| `POST` | `/games/:room_code/swap` | Put the card in your hand in place of a grid card `{ card_id }`, which goes onto the discard pile. Ends the turn |
-| `POST` | `/games/:room_code/discard` | Throw a card drawn from the draw pile and reveal a face-down grid card `{ card_id }`. Ends the turn |
+| `POST` | `/games/:room_code/swap` | Put the card in your hand in place of a grid card `{ card_id }`, which goes onto the discard pile. Removes a completed column, returned as `removed_column`. Ends the turn |
+| `POST` | `/games/:room_code/discard` | Throw a card drawn from the draw pile and reveal a face-down grid card `{ card_id }`. Removes a completed column, returned as `removed_column`. Ends the turn |
 
 ## Project structure
 
@@ -97,7 +98,7 @@ cieljo/
     ├── components/               # Card, PlayerGrid, TableLayout, TableCenter, RoomCode,
     │                             # InfoButton, GameTable
     ├── hooks/                    # useDealAnimation (deal animation), useCardDrag (drag and drop)
-    ├── utils/                    # flyCard (cards flying over the table)
+    ├── utils/                    # flyCard (cards flying over the table), prefersReducedMotion
     └── styles/                   # shared SCSS variables and mixins
 ```
 
@@ -111,6 +112,7 @@ Each component's `.scss` file sits next to its `.jsx` file.
 - The deck uses the Skyjo distribution of 150 cards: -2 ×5, -1 ×15, and 0 to 12 ×10 each. It is shuffled when the game is created.
 - **Reveal phase**: after the deal, the game is `in_progress` without a `current_player` until every player has revealed 2 cards. The player with the highest total then becomes the current player (on a tie, the first in turn order).
 - **Turns**: the current player draws a card (`games.drawn_from` remembers whether it comes from the draw pile or the discard pile), then swaps it or, for a draw pile card, discards it and reveals a grid card. The turn then goes to the next player in turn order. When the draw pile is empty, it is refilled with the discard pile except its top card.
+- **Column removal**: after a move, a column of 3 face-up cards of the same value goes onto the discard pile; the other cards keep their row and column, and the grid closes up on screen.
 
 ## Development
 
@@ -138,6 +140,8 @@ npm run build
 - [x] Reveal the first 2 cards and choose the first player
 - [x] Turns: draw, swap or discard, reveal cards, with drag and drop and card animations
 - [x] Game info bubble (what to do, whose turn)
-- [ ] Column removal, end of round and scoring
+- [x] Column removal (3 identical face-up cards), with its animation
+- [ ] End of round and scoring
+- [ ] Up to 8 players, with the table adapting to the number of players
 - [ ] Real-time updates with Action Cable (the game room polls the API for now)
 - [ ] Friends and invitations
