@@ -18,6 +18,7 @@ class GameStarterService
 
       players = @game.players.order(:turn_order).to_a
       raise Error, "At least #{MIN_PLAYERS} players are needed to start the game." if players.size < MIN_PLAYERS
+      raise Error, "At most #{Game::MAX_PLAYERS} players can play." if players.size > Game::MAX_PLAYERS
 
       # The deck was shuffled before insertion, so the id order is the draw pile order
       draw_pile = @game.cards.where(location: "draw_pile").order(:id).to_a

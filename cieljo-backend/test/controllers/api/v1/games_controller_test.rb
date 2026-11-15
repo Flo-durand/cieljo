@@ -25,6 +25,43 @@ class Api::V1::GamesControllerTest < ActionDispatch::IntegrationTest
     assert_equal 2, game.players.find_by(user: users(:two)).turn_order
   end
 
+  # Adds players to game one (which already has player one) until it has `total` players
+  def fill_game_one(total)
+    game = games(:one)
+    (game.players.count + 1..total).each do |index|
+      user = User.create!(email: "player#{index}@example.com", username: "player_#{index}", password: "password123")
+      game.players.create!(user: user, score: 0, turn_order: index)
+    end
+    game
+  end
+
+  test "the eighth player can join" do
+    game = fill_game_one(7)
+
+    join("ABCD", users(:two))
+
+    assert_response :ok
+    assert_equal 8, game.players.count
+    assert_equal 8, game.players.find_by(user: users(:two)).turn_order
+  end
+
+  test "refuses a ninth player" do
+    game = fill_game_one(8)
+
+    assert_no_difference -> { game.players.count } do
+      join("ABCD", users(:two))
+    end
+
+    assert_response :unprocessable_entity
+    assert_equal "This game is full (8 players maximum).", response.parsed_body["error"]
+  end
+
+  test "the game details give the maximum number of players" do
+    get api_v1_game_url("ABCD"), headers: auth_headers(users(:one)), as: :json
+
+    assert_equal 8, response.parsed_body.dig("data", "max_players")
+  end
+
   test "normalizes the room code" do
     join("  abcd ", users(:two))
 
@@ -166,6 +203,27 @@ class Api::V1::GamesControllerTest < ActionDispatch::IntegrationTest
     assert data["discard_top"]["face_up"]
     assert_not_nil data["discard_top"]["value"]
     assert_equal 125, data["draw_pile_count"]
+  end
+
+  test "cannot start a game with more than 8 players" do
+    game = fill_game_one(9)
+    GameInitializerService.new(game).call
+
+    start("ABCD", users(:one))
+
+    assert_response :unprocessable_entity
+    assert_equal "At most 8 players can play.", response.parsed_body["error"]
+    assert_equal "pending", game.reload.status
+  end
+
+  test "a game with 8 players can start" do
+    game = fill_game_one(8)
+    GameInitializerService.new(game).call
+
+    start("ABCD", users(:one))
+
+    assert_response :ok
+    assert_equal 8 * 12, game.cards.where(location: "player_grid").count
   end
 
   test "returns 404 when starting an unknown room" do
