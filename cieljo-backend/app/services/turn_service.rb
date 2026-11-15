@@ -4,15 +4,20 @@
 #      - swap: put the card in hand in place of one card of the grid; that card goes to the discard pile, or
 #      - discard: throw the card in hand onto the discard pile and reveal a face-down card of the grid
 #        (only when the card comes from the draw pile).
-# After step 2, the turn goes to the next player in turn order.
+# After step 2, a column of the grid with 3 face-up cards of the same value is removed: its cards go onto the
+# discard pile (see removed_column). Then the turn goes to the next player in turn order.
 class TurnService
   class Error < StandardError; end
 
   SOURCES = %w[draw_pile discard_pile].freeze
 
+  # The column removed by the last swap or discard, as { player_id:, column:, value: }, or nil
+  attr_reader :removed_column
+
   def initialize(game, player)
     @game = game
     @player = player
+    @removed_column = nil
   end
 
   def draw(source)
@@ -37,6 +42,7 @@ class TurnService
 
       discard!(grid_card)
       hand.update!(location: "player_grid", row: row, column: column, is_face_up: true)
+      remove_column_if_complete(column)
       end_turn
     end
   end
@@ -51,6 +57,7 @@ class TurnService
 
       discard!(hand)
       grid_card.update!(is_face_up: true)
+      remove_column_if_complete(grid_card.column)
       end_turn
     end
   end
@@ -94,8 +101,27 @@ class TurnService
     cards("player_grid").find_by(player: @player, id: card_id) || raise(Error, "This card is not in your grid.")
   end
 
+  # The discard pile is ordered by updated_at: each card put on it gets a later time than the previous top
+  # card, even when several cards are discarded at once (a removed column), so its order is never ambiguous.
   def discard!(card)
-    card.update!(location: "discard_pile", player: nil, row: nil, column: nil, is_face_up: true)
+    card.update!(location: "discard_pile", player: nil, row: nil, column: nil, is_face_up: true, updated_at: next_discard_time)
+  end
+
+  def next_discard_time
+    now = Time.current
+    latest = cards("discard_pile").maximum(:updated_at)
+    latest && latest >= now ? latest + Rational(1, 1_000_000) : now
+  end
+
+  # A column of 3 face-up cards of the same value leaves the grid: its cards go onto the discard pile,
+  # and the other cards keep their row and column
+  def remove_column_if_complete(column)
+    column_cards = cards("player_grid").where(player: @player, column: column).order(:row).to_a
+    return unless column_cards.size == GameStarterService::GRID_ROWS
+    return unless column_cards.all?(&:is_face_up) && column_cards.map(&:value).uniq.size == 1
+
+    column_cards.each { |card| discard!(card) }
+    @removed_column = { player_id: @player.id, column: column, value: column_cards.first.value }
   end
 
   def end_turn

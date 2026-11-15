@@ -152,7 +152,8 @@ class Api::V1::GamesController < ApplicationController
   private
 
   def play_turn(message)
-    yield TurnService.new(@game, @player)
+    turn = TurnService.new(@game, @player)
+    yield turn
 
     render json: {
       status: { code: 200, message: message },
@@ -161,7 +162,9 @@ class Api::V1::GamesController < ApplicationController
         room_code: @game.room_code,
         current_player_id: @game.current_player_id,
         turn_number: @game.turn_number,
-        hand: hand_json
+        hand: hand_json,
+        # The column of 3 identical cards removed by this move, if any
+        removed_column: turn.removed_column
       }
     }, status: :ok
   rescue TurnService::Error => e
