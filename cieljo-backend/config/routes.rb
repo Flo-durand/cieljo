@@ -3,11 +3,18 @@ Rails.application.routes.draw do
     namespace :v1 do
       root to: "home#index"
 
-      # Standard Devise sign-up/sign-out routes
-      devise_for :users, controllers: {
-        sessions: "api/v1/users/sessions",
-        registrations: "api/v1/users/registrations"
-      }, defaults: { format: :json }
+      # --- Devise: only the sign-up route ---
+      # devise_for must stay: it registers the User model with Devise (the sign-up controller needs it) and with
+      # devise-jwt. Its own routes are skipped: Devise's sign in/out, password and account edit/delete routes
+      # rely on Devise sessions, not on our JWT flow, so they could not work here (401 or 500). Account
+      # edit/delete and "forgot password" emails are planned as our own endpoints using current_user (see
+      # CLAUDE.md); the User model keeps every Devise module for them.
+      devise_for :users, skip: %i[sessions passwords registrations], defaults: { format: :json }
+      # Inside the api/v1 namespace, Devise names this mapping :api_v1_user (not :user)
+      devise_scope :api_v1_user do
+        # POST /api/v1/users signs up
+        post "users", to: "users/registrations#create", as: :user_registration, defaults: { format: :json }
+      end
 
       # --- Custom login route (outside Devise) ---
       post "auth/login", to: "auth#login", defaults: { format: :json }

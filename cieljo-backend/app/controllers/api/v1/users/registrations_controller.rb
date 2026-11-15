@@ -4,6 +4,8 @@ class Api::V1::Users::RegistrationsController < Devise::RegistrationsController
 
   # ApplicationController requires a JWT on every action: signing up must stay public
   skip_before_action :authenticate_user!, only: [ :create ]
+  # Prevents creating accounts in bulk: 5 sign-ups per hour for an IP address
+  rate_limit to: 5, within: 1.hour, only: :create, with: -> { render_rate_limited }
 
   private
 

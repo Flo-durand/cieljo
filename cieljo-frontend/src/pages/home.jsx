@@ -9,7 +9,6 @@ export default function Home() {
   // Initialize directly from localStorage
   const [token, setToken] = useState(() => localStorage.getItem('token'));
   const [username, setUsername] = useState(() => localStorage.getItem('username'));
-  console.log(token)
   // Single 'message' state for all user feedback
   const [message, setMessage] = useState('');
 

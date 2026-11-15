@@ -2,6 +2,9 @@ class Api::V1::GamesController < ApplicationController
   # A removed column puts 3 cards on top of the replaced or thrown card, and one more shows what was under it
   DISCARD_RECENT_COUNT = 5
 
+  # Each new game inserts 150 cards: 10 new games per minute for a user (runs after authenticate_user!)
+  rate_limit to: 10, within: 1.minute, only: :create, by: -> { current_user.id }, with: -> { render_rate_limited }
+
   before_action :set_game, only: %i[show start reveal draw swap discard]
   before_action :set_current_player, only: %i[show reveal draw swap discard]
 
