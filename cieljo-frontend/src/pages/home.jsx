@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiFetch } from '../api';
+import { apiFetch, logout } from '../api';
 import './Home.scss';
 
 export default function Home() {
@@ -82,9 +82,8 @@ export default function Home() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
+  const handleLogout = async () => {
+    await logout();
     setToken(null);
     setUsername(null);
     setMessage('');

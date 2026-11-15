@@ -22,6 +22,17 @@ export function clearSession() {
   localStorage.removeItem('username');
 }
 
+// Logs out on the server too: the API revokes the user's tokens on all their devices. A plain fetch, so an
+// already expired token does not show the "session expired" page; the local session is cleared in any case.
+export async function logout() {
+  try {
+    await fetch(`${API_URL}/auth/logout`, { method: 'DELETE', headers: authHeaders() });
+  } catch {
+    // The backend cannot be reached: the local session is cleared anyway
+  }
+  clearSession();
+}
+
 // Sends an authenticated request to the API (path like '/games') and returns the response.
 // When the API answers 401, the session has expired or was revoked (for example after a logout on another
 // device): the local session is cleared and the login page opens with a message, then brings the user back
