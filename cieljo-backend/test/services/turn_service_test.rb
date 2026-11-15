@@ -306,14 +306,17 @@ class TurnServiceTest < ActiveSupport::TestCase
       player = @game.reload.current_player
       if index.even?
         turn(player).draw(index % 4 == 0 ? "discard_pile" : "draw_pile")
-        turn(player).swap(grid(player).offset(index % 12).first.id)
+        turn(player).swap(grid(player).offset(index % grid(player).count).first.id)
       else
         turn(player).draw("draw_pile")
         turn(player).discard(face_down_card(player).id)
       end
 
       assert_equal total, @game.cards.count
-      [ @p1, @p2, @p3 ].each { |p| assert_equal 12, grid(p).count }
+      # A column of 3 identical face-up cards may be removed by chance: columns are always full or gone
+      [ @p1, @p2, @p3 ].each do |p|
+        assert grid(p).reorder(nil).group(:column).count.values.all? { |count| count == 3 }
+      end
       assert_nil hand
       assert cards_in("discard_pile").exists?
       assert cards_in("discard_pile").all? { |card| card.is_face_up && card.player_id.nil? }
@@ -321,5 +324,202 @@ class TurnServiceTest < ActiveSupport::TestCase
     end
 
     assert_equal 13, @game.reload.turn_number
+  end
+  # --- Column removal ---
+
+  # Sets the cards of a column (rows 0 to 2) of the player's grid
+  def set_column(player, column, values:, face_up:)
+    grid(player).where(column: column).order(:row).each_with_index do |card, row|
+      card.update!(value: values[row], is_face_up: face_up[row])
+    end
+  end
+
+  def card_at(player, row, column)
+    grid(player).find_by(row: row, column: column)
+  end
+
+  def discard_pile_in_order
+    cards_in("discard_pile").order(:updated_at, :id).to_a
+  end
+
+  # Draws a card from the draw pile and gives it a known value
+  def draw_value(player, value)
+    turn(player).draw("draw_pile")
+    hand.update!(value: value)
+    hand
+  end
+
+  test "a swap that makes a column of 3 identical face-up cards removes the column" do
+    set_column(@p1, 0, values: [ 5, 5, 9 ], face_up: [ true, true, false ])
+    column_cards = grid(@p1).where(column: 0).order(:row).to_a
+    drawn = draw_value(@p1, 5)
+    replaced = card_at(@p1, 2, 0)
+
+    service = turn(@p1)
+    service.swap(replaced.id)
+
+    assert_equal({ player_id: @p1.id, column: 0, value: 5 }, service.removed_column)
+    assert_equal 9, grid(@p1).count
+    assert_not grid(@p1).exists?(column: 0)
+    removed = [ column_cards[0], column_cards[1], drawn ]
+    assert removed.all? { |card| card.reload.location == "discard_pile" && card.player_id.nil? && card.is_face_up }
+    assert removed.all? { |card| card.row.nil? && card.column.nil? }
+    assert_equal @p2, @game.reload.current_player, "the turn still passes to the next player"
+  end
+
+  test "the removed column goes on top of the replaced card on the discard pile" do
+    set_column(@p1, 1, values: [ 4, 4, 0 ], face_up: [ true, true, true ])
+    draw_value(@p1, 4)
+    replaced = card_at(@p1, 2, 1)
+
+    turn(@p1).swap(replaced.id)
+
+    pile = discard_pile_in_order
+    assert_equal replaced, pile[-4], "the replaced card is just under the removed column"
+    assert_equal [ 4, 4, 4 ], pile.last(3).map(&:value)
+  end
+
+  test "a discard that reveals the third identical card removes the column" do
+    set_column(@p1, 3, values: [ 7, 7, 7 ], face_up: [ true, true, false ])
+    thrown = draw_value(@p1, 12)
+    revealed = card_at(@p1, 2, 3)
+
+    service = turn(@p1)
+    service.discard(revealed.id)
+
+    assert_equal({ player_id: @p1.id, column: 3, value: 7 }, service.removed_column)
+    assert_not grid(@p1).exists?(column: 3)
+    pile = discard_pile_in_order
+    assert_equal thrown, pile[-4], "the thrown card is just under the removed column"
+    assert_equal [ 7, 7, 7 ], pile.last(3).map(&:value)
+  end
+
+  test "columns of negative values and of zeros are removed too" do
+    { 0 => -2, 1 => 0 }.each do |column, value|
+      set_column(@p1, column, values: [ value, value, 3 ], face_up: [ true, true, false ])
+    end
+
+    draw_value(@p1, -2)
+    turn(@p1).swap(card_at(@p1, 2, 0).id)
+    assert_not grid(@p1).exists?(column: 0)
+
+    # Back to player one's turn
+    [ @p2, @p3 ].each do |player|
+      turn(player).draw("draw_pile")
+      turn(player).discard(face_down_card(player).id)
+    end
+
+    draw_value(@p1, 0)
+    turn(@p1).swap(card_at(@p1, 2, 1).id)
+    assert_not grid(@p1).exists?(column: 1)
+  end
+
+  test "a column with a face-down card is not removed" do
+    set_column(@p1, 0, values: [ 5, 5, 5 ], face_up: [ true, false, false ])
+    draw_value(@p1, 5)
+
+    service = turn(@p1)
+    service.swap(card_at(@p1, 2, 0).id)
+
+    assert_nil service.removed_column
+    assert_equal 12, grid(@p1).count
+  end
+
+  test "a column with different values is not removed" do
+    set_column(@p1, 0, values: [ 5, 6, 0 ], face_up: [ true, true, true ])
+    draw_value(@p1, 5)
+
+    service = turn(@p1)
+    service.swap(card_at(@p1, 2, 0).id)
+
+    assert_nil service.removed_column
+    assert_equal 12, grid(@p1).count
+  end
+
+  test "only the column of the played card is removed, and only for the current player" do
+    set_column(@p1, 0, values: [ 8, 8, 1 ], face_up: [ true, true, true ])
+    # Another player's complete column is not touched by player one's move
+    set_column(@p2, 0, values: [ 8, 8, 8 ], face_up: [ true, true, true ])
+    draw_value(@p1, 8)
+
+    turn(@p1).swap(card_at(@p1, 2, 0).id)
+
+    assert_not grid(@p1).exists?(column: 0)
+    assert_equal 12, grid(@p2).count
+  end
+
+  test "the other cards keep their place after a column is removed" do
+    positions = grid(@p1).where.not(column: 2).pluck(:id, :row, :column)
+    set_column(@p1, 2, values: [ 6, 6, 1 ], face_up: [ true, true, true ])
+    draw_value(@p1, 6)
+
+    turn(@p1).swap(card_at(@p1, 2, 2).id)
+
+    assert_equal positions.sort, grid(@p1).pluck(:id, :row, :column).sort
+  end
+
+  test "several columns can be removed over the game" do
+    set_column(@p1, 0, values: [ 2, 2, 0 ], face_up: [ true, true, true ])
+    set_column(@p1, 3, values: [ 9, 9, 0 ], face_up: [ true, true, true ])
+
+    draw_value(@p1, 2)
+    turn(@p1).swap(card_at(@p1, 2, 0).id)
+    [ @p2, @p3 ].each do |player|
+      turn(player).draw("draw_pile")
+      turn(player).discard(face_down_card(player).id)
+    end
+    draw_value(@p1, 9)
+    turn(@p1).swap(card_at(@p1, 2, 3).id)
+
+    assert_equal [ 1, 2 ], grid(@p1).reorder(nil).distinct.pluck(:column).sort
+    assert_equal 6, grid(@p1).count
+  end
+
+  test "the next player can take the top card of a removed column" do
+    set_column(@p1, 0, values: [ 3, 3, 0 ], face_up: [ true, true, true ])
+    draw_value(@p1, 3)
+    turn(@p1).swap(card_at(@p1, 2, 0).id)
+    top = discard_top
+
+    turn(@p2).draw("discard_pile")
+
+    assert_equal top, hand
+    assert_equal 3, hand.value
+    assert_equal [ 3, 3 ], discard_pile_in_order.last(2).map(&:value), "the other two cards of the column stay on top"
+  end
+
+  test "the discard pile keeps its order even when the clock does not move" do
+    set_column(@p1, 0, values: [ 1, 1, 0 ], face_up: [ true, true, true ])
+    draw_value(@p1, 1)
+    replaced = card_at(@p1, 2, 0)
+
+    travel_to(Time.current) { turn(@p1).swap(replaced.id) }
+
+    pile = discard_pile_in_order
+    assert_equal replaced, pile[-4]
+    assert_equal pile.map(&:updated_at), pile.map(&:updated_at).uniq.sort, "every discarded card has its own time"
+  end
+
+  test "a column with fewer than 3 cards is never removed" do
+    # Inconsistent data: a column where a card is missing must not be removed with only 2 cards
+    set_column(@p1, 0, values: [ 5, 5, 0 ], face_up: [ true, true, true ])
+    card_at(@p1, 0, 0).update!(location: "draw_pile", player: nil, row: nil, column: nil, is_face_up: false)
+    draw_value(@p1, 5)
+
+    service = turn(@p1)
+    service.swap(card_at(@p1, 2, 0).id)
+
+    assert_nil service.removed_column
+    assert_equal 2, grid(@p1).where(column: 0).count
+  end
+
+  test "no card is lost when a column is removed" do
+    total = @game.cards.count
+    set_column(@p1, 1, values: [ 10, 10, 0 ], face_up: [ true, true, true ])
+    draw_value(@p1, 10)
+
+    turn(@p1).swap(card_at(@p1, 2, 1).id)
+
+    assert_equal total, @game.cards.count
   end
 end

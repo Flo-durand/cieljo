@@ -20,7 +20,7 @@ function seatOpponents(players) {
 }
 
 // The green table: the current player at the bottom, the opponents around, and `children` in the middle.
-// renderPlayer(player, { small }) draws one seat; opponents are drawn small.
+// renderPlayer(player, { small }) draws one seat; small is true for the opponents (smaller names).
 // corner is shown in the bottom right corner of the table (the info button during the game).
 export default function TableLayout({ players, renderPlayer, corner, children }) {
   const me = players.find(player => player.current_user);

@@ -407,4 +407,63 @@ class Api::V1::GamesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :unauthorized
   end
+  # --- Column removal ---
+
+  # Gives column 0 of player one two face-up 5s and a third card to swap, and puts a 5 in their hand
+  def prepare_column_of_fives(game)
+    column = grid_of(game, :one).where(column: 0).order(:row).to_a
+    column[0].update!(value: 5, is_face_up: true)
+    column[1].update!(value: 5, is_face_up: true)
+    play(:draw, users(:one), source: "draw_pile")
+    game.cards.find_by(location: "hand").update!(value: 5)
+    column[2]
+  end
+
+  test "a swap that completes a column returns the removed column" do
+    game = start_turns
+    replaced = prepare_column_of_fives(game)
+
+    play(:swap, users(:one), card_id: replaced.id)
+
+    assert_response :ok
+    expected = { "player_id" => game.players.find_by(user: users(:one)).id, "column" => 0, "value" => 5 }
+    assert_equal expected, response.parsed_body.dig("data", "removed_column")
+  end
+
+  test "a move that removes no column returns no removed column" do
+    game = start_turns
+    play(:draw, users(:one), source: "draw_pile")
+
+    play(:discard, users(:one), card_id: grid_of(game, :one).first.id)
+
+    assert_response :ok
+    assert_nil response.parsed_body.dig("data", "removed_column")
+  end
+
+  test "the other players see the grid without the removed column" do
+    game = start_turns
+    replaced = prepare_column_of_fives(game)
+    positions = grid_of(game, :one).where.not(column: 0).pluck(:id, :row, :column)
+
+    play(:swap, users(:one), card_id: replaced.id)
+
+    data = show_as(users(:two))
+    grid = data["players"].find { |player| player["username"] == "player_one" }["grid"]
+    assert_equal 9, grid.size
+    assert_equal positions.sort, grid.map { |card| [ card["id"], card["row"], card["column"] ] }.sort
+    assert_equal 5, data.dig("discard_top", "value")
+  end
+  test "the game details list the last discarded cards, oldest first" do
+    game = start_turns
+    replaced = prepare_column_of_fives(game)
+    under = game.cards.where(location: "discard_pile").order(:updated_at, :id).last
+
+    play(:swap, users(:one), card_id: replaced.id)
+
+    recent = show_as(users(:two))["discard_recent"]
+    assert_equal 5, recent.size
+    assert_equal [ under.id, replaced.id ], recent.first(2).map { |card| card["id"] }
+    assert_equal [ 5, 5, 5 ], recent.last(3).map { |card| card["value"] }
+    assert_equal replaced.value, recent[1]["value"], "a discarded card is face up, so its value is sent"
+  end
 end

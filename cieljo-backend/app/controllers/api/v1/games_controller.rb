@@ -1,4 +1,7 @@
 class Api::V1::GamesController < ApplicationController
+  # A removed column puts 3 cards on top of the replaced or thrown card, and one more shows what was under it
+  DISCARD_RECENT_COUNT = 5
+
   before_action :set_game, only: %i[show start reveal draw swap discard]
   before_action :set_current_player, only: %i[show reveal draw swap discard]
 
@@ -28,7 +31,11 @@ class Api::V1::GamesController < ApplicationController
         # The card the current player has drawn, visible to everyone, or nil
         hand: hand_json,
         # The last card put on the discard pile is the visible one
-        discard_top: card_json(@game.cards.where(location: "discard_pile").order(:updated_at, :id).last)
+        discard_top: card_json(@game.cards.where(location: "discard_pile").order(:updated_at, :id).last),
+        # The last cards put on the discard pile, oldest first (every discarded card was shown face up), so the
+        # frontend can show them landing one after the other when a column is removed
+        discard_recent: @game.cards.where(location: "discard_pile").order(updated_at: :desc, id: :desc)
+                             .limit(DISCARD_RECENT_COUNT).reverse.map { |card| card_json(card) }
       }
     }, status: :ok
   end
@@ -152,7 +159,8 @@ class Api::V1::GamesController < ApplicationController
   private
 
   def play_turn(message)
-    yield TurnService.new(@game, @player)
+    turn = TurnService.new(@game, @player)
+    yield turn
 
     render json: {
       status: { code: 200, message: message },
@@ -161,7 +169,9 @@ class Api::V1::GamesController < ApplicationController
         room_code: @game.room_code,
         current_player_id: @game.current_player_id,
         turn_number: @game.turn_number,
-        hand: hand_json
+        hand: hand_json,
+        # The column of 3 identical cards removed by this move, if any
+        removed_column: turn.removed_column
       }
     }, status: :ok
   rescue TurnService::Error => e

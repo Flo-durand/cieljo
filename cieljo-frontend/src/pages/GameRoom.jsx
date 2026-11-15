@@ -5,7 +5,8 @@ import GameTable from '../components/GameTable';
 import PlayerGrid from '../components/PlayerGrid';
 import RoomCode from '../components/RoomCode';
 import TableLayout from '../components/TableLayout';
-import { buildDeal, prefersReducedMotion } from '../hooks/useDealAnimation';
+import { buildDeal } from '../hooks/useDealAnimation';
+import prefersReducedMotion from '../utils/prefersReducedMotion';
 import './GameRoom.scss';
 
 // How often the player list is refreshed (until real-time updates with ActionCable)
@@ -20,6 +21,7 @@ export default function GameRoom() {
   const [status, setStatus] = useState('pending');
   const [drawPileCount, setDrawPileCount] = useState(0);
   const [discardTop, setDiscardTop] = useState(null);
+  const [discardRecent, setDiscardRecent] = useState([]);
   const [hand, setHand] = useState(null);
   const [initialReveal, setInitialReveal] = useState(false);
   const [currentPlayerId, setCurrentPlayerId] = useState(null);
@@ -47,6 +49,7 @@ export default function GameRoom() {
         setStatus(data.data.status);
         setDrawPileCount(data.data.draw_pile_count);
         setDiscardTop(data.data.discard_top);
+        setDiscardRecent(data.data.discard_recent);
         setHand(data.data.hand);
         setInitialReveal(data.data.initial_reveal);
         setCurrentPlayerId(data.data.current_player_id);
@@ -168,6 +171,7 @@ export default function GameRoom() {
           players={players}
           drawPileCount={drawPileCount}
           discardTop={discardTop}
+          discardRecent={discardRecent}
           hand={hand}
           initialReveal={initialReveal}
           currentPlayerId={currentPlayerId}
