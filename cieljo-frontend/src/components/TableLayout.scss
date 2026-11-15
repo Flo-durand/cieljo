@@ -1,19 +1,19 @@
 @use '../styles/variables' as *;
 
-// A 3 x 3 grid: opponents at the top, on the left and right, and next to the current player at the bottom.
-// The side columns are as wide as a seat (or empty), the middle column takes the rest. With 6 or 8 players, the
-// widest row is 2 side seats + 3 top seats: 5 seats of 187 px + gaps = 1031 px, inside the 1100 px of content.
+// A 3 x 3 grid with one seat per place: the side columns are as wide as a seat (or empty) and the middle
+// column is always 420 px, so the table is as wide as its content (187 + 420 + 187 px + gaps = 842 px with
+// side seats) and keeps the same width whatever the number of players.
 .table-layout {
   display: grid;
   grid-template-areas:
-    '.           top    .'
+    'top-left    top    top-right'
     'left        center right'
     'bottom-left me     bottom-right';
   position: relative;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 420px auto;
   gap: 30px 24px;
   align-items: center;
-  max-width: 1100px;
+  width: fit-content;
   margin: 30px auto;
   padding: 30px;
   border-radius: 40px;
@@ -30,7 +30,7 @@
     justify-content: center;
     gap: 24px;
 
-    @each $seat in top, left, right, bottom-left, bottom-right {
+    @each $seat in top-left, top, top-right, left, right, bottom-left, bottom-right {
       &--#{$seat} {
         grid-area: $seat;
       }
@@ -40,15 +40,14 @@
   // Same size before and after the start (room code, then piles), so the table does not jump
   &__center {
     grid-area: center;
-    justify-self: center;
     position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    // A fixed width keeps the side seats in place when the room code is replaced by the piles
-    width: 420px;
-    max-width: 100%;
+    // As wide as the middle column, padding included, so the room code and the piles never move the seats
+    box-sizing: border-box;
+    width: 100%;
     min-height: 220px;
     padding: 20px;
   }

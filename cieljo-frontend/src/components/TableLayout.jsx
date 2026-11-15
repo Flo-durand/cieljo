@@ -1,40 +1,43 @@
 import './TableLayout.scss';
 
-// The places around the table, in clockwise order from the current player, who sits at the bottom center
-const SEATS = ['bottom-left', 'left', 'top', 'right', 'bottom-right'];
+// The 7 places around the table, in clockwise order from the current player, who sits at the bottom center:
+//   [top-left]     [top]    [top-right]
+//   [left]       (middle)   [right]
+//   [bottom-left]   (me)    [bottom-right]
+const SEATS = ['bottom-left', 'left', 'top-left', 'top', 'top-right', 'right', 'bottom-right'];
 
-// How many opponents sit at each place, by number of opponents (1 to 7): never more than 3 at the top
-// and 1 at any other place, so seats are never stacked and the table keeps the same shape.
+// The places used, by number of opponents (1 to 7): one player per place, and a symmetric table when possible.
 //   players:      2  3  4  5  6  7  8
-//   bottom-left   -  -  -  -  -  1  1
-//   left          -  1  1  1  1  1  1
-//   top           1  -  1  2  3  2  3
-//   right         -  1  1  1  1  1  1
-//   bottom-right  -  -  -  -  -  1  1
-const SEAT_COUNTS = {
-  1: { top: 1 },
-  2: { left: 1, right: 1 },
-  3: { left: 1, top: 1, right: 1 },
-  4: { left: 1, top: 2, right: 1 },
-  5: { left: 1, top: 3, right: 1 },
-  6: { 'bottom-left': 1, left: 1, top: 2, right: 1, 'bottom-right': 1 },
-  7: { 'bottom-left': 1, left: 1, top: 3, right: 1, 'bottom-right': 1 },
+//   bottom-left   -  -  -  -  -  x  x
+//   left          -  x  x  x  x  x  x
+//   top-left      -  -  -  x  x  x  x
+//   top           x  -  x  -  x  -  x
+//   top-right     -  -  -  x  x  x  x
+//   right         -  x  x  x  x  x  x
+//   bottom-right  -  -  -  -  -  x  x
+const USED_SEATS = {
+  1: ['top'],
+  2: ['left', 'right'],
+  3: ['left', 'top', 'right'],
+  4: ['left', 'top-left', 'top-right', 'right'],
+  5: ['left', 'top-left', 'top', 'top-right', 'right'],
+  6: ['bottom-left', 'left', 'top-left', 'top-right', 'right', 'bottom-right'],
+  7: SEATS,
 };
 
 // Seats the opponents clockwise from the current player: the player right after them sits at the bottom
-// left (or the left), then come the left, the top (from left to right), the right and the bottom right.
+// left (or the left), then come the left, the top left, the top, the top right, the right and the bottom right.
 function seatOpponents(players) {
   const meIndex = players.findIndex(player => player.current_user);
   // Opponents in turn order, starting with the player right after the current one
   const opponents = [...players.slice(meIndex + 1), ...players.slice(0, meIndex)];
-  const counts = SEAT_COUNTS[opponents.length] ?? {};
+  const used = USED_SEATS[opponents.length] ?? [];
 
   const seats = {};
   let next = 0;
   SEATS.forEach(seat => {
-    const count = counts[seat] ?? 0;
-    seats[seat] = opponents.slice(next, next + count);
-    next += count;
+    seats[seat] = used.includes(seat) ? opponents.slice(next, next + 1) : [];
+    if (used.includes(seat)) next += 1;
   });
   return seats;
 }
