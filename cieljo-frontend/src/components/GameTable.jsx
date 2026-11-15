@@ -346,7 +346,7 @@ export default function GameTable({
       />
 
       {/* The room code shown in the lobby fades out as the piles fade in */}
-      {dealing && <RoomCode code={roomCode} lines={['The game is starting!', '']} className="room-code--leaving" />}
+      {dealing && <RoomCode code={roomCode} lines={['The game is starting!', '', '']} className="room-code--leaving" />}
     </TableLayout>
   );
 }

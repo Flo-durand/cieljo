@@ -22,6 +22,7 @@ export default function GameRoom() {
   const [drawPileCount, setDrawPileCount] = useState(0);
   const [discardTop, setDiscardTop] = useState(null);
   const [discardRecent, setDiscardRecent] = useState([]);
+  const [maxPlayers, setMaxPlayers] = useState(null);
   const [hand, setHand] = useState(null);
   const [initialReveal, setInitialReveal] = useState(false);
   const [currentPlayerId, setCurrentPlayerId] = useState(null);
@@ -50,6 +51,7 @@ export default function GameRoom() {
         setDrawPileCount(data.data.draw_pile_count);
         setDiscardTop(data.data.discard_top);
         setDiscardRecent(data.data.discard_recent);
+        setMaxPlayers(data.data.max_players);
         setHand(data.data.hand);
         setInitialReveal(data.data.initial_reveal);
         setCurrentPlayerId(data.data.current_player_id);
@@ -123,6 +125,8 @@ export default function GameRoom() {
   let waiting = 'Everyone is here? Start the game!';
   if (players.length < 2) waiting = 'Waiting for other players...';
   else if (!isHost) waiting = 'Waiting for the host to start the game...';
+  const isFull = maxPlayers !== null && players.length >= maxPlayers;
+  const playerCount = maxPlayers === null ? '' : `${players.length}/${maxPlayers} players${isFull ? ' (the table is full)' : ''}`;
 
   // Before the deal, the players already sit at their seats, and the room code is in the middle of the table
   const lobby = (
@@ -132,7 +136,7 @@ export default function GameRoom() {
     >
       <RoomCode
         code={room_code}
-        lines={['Share this code with your friends so they can join your game!', waiting]}
+        lines={['Share this code with your friends so they can join your game!', playerCount, waiting]}
       >
         {isHost && (
           <button
