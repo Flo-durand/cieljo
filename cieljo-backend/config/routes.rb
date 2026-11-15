@@ -19,6 +19,9 @@ Rails.application.routes.draw do
       # --- Custom login route (outside Devise) ---
       post "auth/login", to: "auth#login", defaults: { format: :json }
 
+      # GET /api/v1/me returns the logged-in user (and tells the frontend whether the session is still valid)
+      resource :me, only: :show, controller: "me"
+
       # --- Game routes ---
       # GET /api/v1/games/:room_code returns the game and its players
       resources :games, only: [ :create, :show ], param: :room_code do
