@@ -25,6 +25,8 @@ $card-height: 62px;
 $card-font-size: 19px;
 $grid-gap: 5px;
 $grid-columns: 4;
+// A player's seat is as wide as a full grid
+$seat-width: $grid-columns * $card-width + ($grid-columns - 1) * $grid-gap;
 
 // Typography
 $font-family-base: sans-serif;

@@ -1,8 +1,8 @@
 @use '../styles/variables' as *;
 
-// A 3 x 3 grid with one seat per place: the side columns are as wide as a seat (or empty) and the middle
-// column is always 420 px, so the table is as wide as its content (187 + 420 + 187 px + gaps = 842 px with
-// side seats) and keeps the same width whatever the number of players.
+// A 3 x 3 grid with one seat per place: the side columns are always as wide as a seat, even when nobody sits
+// there, and the middle column is always 420 px, so the table always has the same width
+// (187 + 420 + 187 px + gaps = 842 px), whatever the number of players.
 .table-layout {
   display: grid;
   grid-template-areas:
@@ -10,7 +10,7 @@
     'left        center right'
     'bottom-left me     bottom-right';
   position: relative;
-  grid-template-columns: auto 420px auto;
+  grid-template-columns: $seat-width 420px $seat-width;
   gap: 30px 24px;
   align-items: center;
   width: fit-content;
