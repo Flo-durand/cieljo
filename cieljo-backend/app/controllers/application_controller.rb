@@ -25,9 +25,11 @@ class ApplicationController < ActionController::API
         if @current_user && @current_user.jti == payload["jti"]
           return true # Authenticated, let the request through
         end
-      rescue => e
-        # Expired, forged or tampered tokens make the decoder raise
-        logger.error "JWT DECODING FAILED: #{e.message}"
+      rescue JWT::DecodeError => e
+        # Expired, forged or malformed tokens make the decoder raise (JWT::ExpiredSignature,
+        # JWT::VerificationError... are all JWT::DecodeError). Any other error, such as a database outage,
+        # is a real server error and must not be turned into a 401.
+        logger.info "Invalid JWT: #{e.class}"
       end
     end
 
