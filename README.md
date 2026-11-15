@@ -62,7 +62,7 @@ The frontend calls the API at `http://localhost:3000/api/v1`, and CORS only allo
 
 > To test with several players on one computer, use a private window or another browser for each account: the login token is stored in `localStorage`, which is shared by the tabs of one browser.
 
-The game room refreshes every 3 seconds, so the other players see your actions with a short delay.
+The game room refreshes every 3 seconds while its tab is visible, so the other players see your actions with a short delay. A hidden tab stops refreshing and catches up as soon as you come back to it.
 
 Sessions last 24 hours. When a session has expired, or after logging out (which logs you out on all your devices), the app sends you to the login page and brings you back to the page you were on, such as a game room opened from a link.
 
