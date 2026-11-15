@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../api';
 import './Home.scss';
@@ -9,6 +9,30 @@ export default function Home() {
   // Initialize directly from localStorage
   const [token, setToken] = useState(() => localStorage.getItem('token'));
   const [username, setUsername] = useState(() => localStorage.getItem('username'));
+  // A stored token may have expired or been revoked: check it with the API when the page opens.
+  // apiFetch sends to the login page on a 401; otherwise the username is refreshed from the server.
+  useEffect(() => {
+    if (!token) return undefined;
+    let active = true;
+
+    const checkSession = async () => {
+      try {
+        const response = await apiFetch('/me');
+        if (!response.ok || !active) return;
+        const data = await response.json();
+        localStorage.setItem('username', data.data.username);
+        setUsername(data.data.username);
+      } catch {
+        // The backend cannot be reached: keep the stored session, the actions will show the error
+      }
+    };
+
+    checkSession();
+    return () => {
+      active = false;
+    };
+  }, [token]);
+
   // Single 'message' state for all user feedback
   const [message, setMessage] = useState('');
 
