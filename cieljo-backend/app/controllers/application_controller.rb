@@ -8,6 +8,11 @@ class ApplicationController < ActionController::API
 
   private
 
+  # Answer of the rate limits (rate_limit ... with: -> { render_rate_limited })
+  def render_rate_limited
+    render json: { error: "Too many requests. Please wait a moment and try again." }, status: :too_many_requests
+  end
+
   def authenticate_user!
     # 1. Extract the raw token string (strip the "Bearer " prefix)
     auth_header = request.headers["Authorization"]

@@ -1,6 +1,8 @@
 class Api::V1::AuthController < ApplicationController
   # No CSRF protection or Devise filters needed here
   skip_before_action :authenticate_user!, only: [ :login ]
+  # Slows down password guessing: 10 login attempts per 3 minutes for an IP address
+  rate_limit to: 10, within: 3.minutes, only: :login, with: -> { render_rate_limited }
 
   def login
     # 1. Read the credentials: a request without a "user" object is refused with a 400 (see below)

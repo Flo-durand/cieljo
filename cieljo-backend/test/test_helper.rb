@@ -10,6 +10,9 @@ module ActiveSupport
     # Setup all fixtures in test/fixtures/*.yml for all tests in alphabetical order.
     fixtures :all
 
+    # The rate limits count requests in the cache: start every test with empty counters
+    setup { Rails.cache.clear }
+
     # Add more helper methods to be used by all tests here...
   end
 end
