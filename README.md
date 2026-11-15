@@ -49,7 +49,7 @@ The frontend calls the API at `http://localhost:3000/api/v1`, and CORS only allo
 
 1. Open http://localhost:5173/auth and create an account, then log in.
 2. On the home page, **create a game**. You are taken to the room `/game/<ROOM_CODE>`, shown as a green table with the room code in the middle.
-3. Share the room code. Other players join it from the home page and sit around the table.
+3. Share the room code. Other players join it from the home page and sit around the table: **2 to 8 players**, as in the official rules. The lobby shows how many players have joined ("3/8 players"). You always sit at the bottom center; the others are seated clockwise in turn order, one per place, in the 7 places around you.
 4. Once at least 2 players are seated, the host clicks **Start the game**. The room code fades out, the draw pile appears, and the cards are dealt: 12 face-down cards to each player (a 3×4 grid), then one card is flipped onto the discard pile.
 5. Each player reveals 2 cards of their grid by clicking them. Once everyone has, the player with the highest total plays first.
 6. On your turn, either:
@@ -74,7 +74,7 @@ All routes are under `/api/v1`. Every endpoint except sign-up and login needs an
 | `POST` | `/auth/login` | Log in. Returns the token in `data.token` |
 | `POST` | `/games` | Create a game room. The current user becomes the host |
 | `GET` | `/games/:room_code` | Get a game, its players and their grids, the piles (with the last 5 discarded cards) and the current player (players only). The values of face-down cards are never sent |
-| `POST` | `/games/join` | Join a pending game with `{ room_code }` |
+| `POST` | `/games/join` | Join a pending game with `{ room_code }` (8 players maximum) |
 | `POST` | `/games/:room_code/start` | Start the game and deal the cards (host only, at least 2 players) |
 | `POST` | `/games/:room_code/reveal` | Reveal one of your first 2 cards with `{ card_id }` |
 | `POST` | `/games/:room_code/draw` | On your turn, take a card from `{ source: "draw_pile" \| "discard_pile" }` into your hand |
@@ -107,7 +107,7 @@ Each component's `.scss` file sits next to its `.jsx` file.
 ### Game domain
 
 - **Game**: has a unique 4-character `room_code`, a `status` (`pending`, `in_progress` or `finished`) and a `current_player`. The host is the player who created the game.
-- **Player**: links a `User` to a `Game`, with a `score` and a `turn_order`.
+- **Player**: links a `User` to a `Game`, with a `score` and a `turn_order`. A game has 2 to 8 players (`Game::MAX_PLAYERS`).
 - **Card**: has a `value`, a `location` (`draw_pile`, `player_grid`, `discard_pile` or `hand` for the card the current player has drawn), `is_face_up`, and a `row`/`column` in a player's grid.
 - The deck uses the Skyjo distribution of 150 cards: -2 ×5, -1 ×15, and 0 to 12 ×10 each. It is shuffled when the game is created.
 - **Reveal phase**: after the deal, the game is `in_progress` without a `current_player` until every player has revealed 2 cards. The player with the highest total then becomes the current player (on a tie, the first in turn order).
@@ -142,6 +142,7 @@ npm run build
 - [x] Game info bubble (what to do, whose turn)
 - [x] Column removal (3 identical face-up cards), with its animation
 - [ ] End of round and scoring
-- [ ] Up to 8 players, with the table adapting to the number of players
+- [x] Up to 8 players, seated around a table of fixed width
+- [ ] A table that adapts to the size of the screen
 - [ ] Real-time updates with Action Cable (the game room polls the API for now)
 - [ ] Friends and invitations

@@ -1,45 +1,44 @@
 @use '../styles/variables' as *;
 
+// A 3 x 3 grid with one seat per place: the side columns are always as wide as a seat, even when nobody sits
+// there, and the middle column is always 420 px, so the table always has the same width
+// (187 + 420 + 187 px + gaps = 842 px), whatever the number of players.
 .table-layout {
   display: grid;
   grid-template-areas:
-    '.    top    .'
-    'left center right'
-    '.    me     .';
+    'top-left    top    top-right'
+    'left        center right'
+    'bottom-left me     bottom-right';
   position: relative;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 30px;
+  grid-template-columns: $seat-width 420px $seat-width;
+  gap: 30px 24px;
   align-items: center;
-  max-width: 1100px;
-  margin: 30px auto;
+  width: fit-content;
+  margin: auto;
   padding: 30px;
   border-radius: 40px;
   background-color: $color-table;
   color: $color-white;
 
+  // The info button gets its own space below the players next to the current one
+  &--bottom-seats {
+    padding-bottom: 84px;
+  }
+
   &__seats {
     display: flex;
+    justify-content: center;
     gap: 24px;
 
-    &--top {
-      grid-area: top;
-      justify-content: center;
-    }
-
-    &--left {
-      grid-area: left;
-      flex-direction: column;
-      align-items: flex-end;
-    }
-
-    &--right {
-      grid-area: right;
-      flex-direction: column;
-      align-items: flex-start;
+    @each $seat in top-left, top, top-right, left, right, bottom-left, bottom-right {
+      &--#{$seat} {
+        grid-area: $seat;
+      }
     }
   }
 
-  // Same size before and after the start (room code, then piles), so the table does not jump
+  // Same size before and after the start (room code, then piles), so the table does not jump: a fixed height
+  // that holds the room code with its 3 lines and the start button, and the piles during the game
   &__center {
     grid-area: center;
     position: relative;
@@ -47,10 +46,10 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    // A fixed width keeps the side seats in place when the room code is replaced by the piles
-    width: 420px;
-    max-width: 100%;
-    min-height: 220px;
+    // As wide as the middle column, padding included, so the room code and the piles never move the seats
+    box-sizing: border-box;
+    width: 100%;
+    height: 260px;
     padding: 20px;
   }
 

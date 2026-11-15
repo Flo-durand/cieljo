@@ -16,6 +16,8 @@ class Game < ApplicationRecord
 
   # Number of cards each player reveals at the start of the game
   INITIAL_REVEAL_COUNT = 2
+  # The official Skyjo rules are for 2 to 8 players
+  MAX_PLAYERS = 8
 
   # Automatically generate a unique 4-character room code before creating the game
   before_validation :generate_room_code, on: :create

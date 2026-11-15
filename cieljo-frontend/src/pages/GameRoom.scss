@@ -1,15 +1,30 @@
 @use '../styles/variables' as *;
 
 .game-room {
+  // Three columns: the title, the table (always the same width) and the leave button
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 20px;
+  align-items: start;
   padding: 20px;
   text-align: center;
 
-  &__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-bottom: 10px;
-    border-bottom: 2px solid $color-border-light;
+  // Lined up with the top of the table (see the margin of TableLayout.scss)
+  &__side {
+    padding-top: 30px;
+
+    &--left {
+      text-align: left;
+    }
+
+    &--right {
+      display: flex;
+      justify-content: flex-end;
+    }
+  }
+
+  &__title {
+    margin: 0;
   }
 
   &__error {

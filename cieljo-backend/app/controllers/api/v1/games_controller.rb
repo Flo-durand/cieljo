@@ -14,6 +14,7 @@ class Api::V1::GamesController < ApplicationController
         game_id: @game.id,
         room_code: @game.room_code,
         status: @game.status,
+        max_players: Game::MAX_PLAYERS,
         # True while the players reveal their first cards; the current player is then chosen
         initial_reveal: @game.initial_reveal_phase?,
         current_player_id: @game.current_player_id,
@@ -80,13 +81,22 @@ class Api::V1::GamesController < ApplicationController
       return render json: { error: "You are already in this game." }, status: :conflict
     end
 
-    unless game.status == "pending"
-      return render json: { error: "This game has already started or is finished." }, status: :unprocessable_entity
+    # Locks the game row: two players joining at the same time cannot both take the last seat or the same turn order
+    error = nil
+    player = nil
+    game.with_lock do
+      if game.status != "pending"
+        error = "This game has already started or is finished."
+      elsif game.players.count >= Game::MAX_PLAYERS
+        error = "This game is full (#{Game::MAX_PLAYERS} players maximum)."
+      else
+        player = game.players.new(user: current_user, score: 0, turn_order: game.players.count + 1)
+        player.save
+      end
     end
+    return render json: { error: error }, status: :unprocessable_entity if error
 
-    player = game.players.new(user: current_user, score: 0, turn_order: game.players.count + 1)
-
-    if player.save
+    if player.persisted?
       render json: {
         status: { code: 200, message: "Joined the game." },
         data: {
