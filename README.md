@@ -72,9 +72,9 @@ All routes are under `/api/v1`. Every endpoint except sign-up and login needs an
 
 | Method | Route | Description |
 | --- | --- | --- |
-| `POST` | `/users` | Sign up |
-| `POST` | `/auth/login` | Log in. Returns the token in `data.token` |
-| `POST` | `/games` | Create a game room. The current user becomes the host |
+| `POST` | `/users` | Sign up with `{ user: { email, password, username } }` (5 per hour per IP address) |
+| `POST` | `/auth/login` | Log in with `{ user: { email, password } }`. Returns the token in `data.token`; 401 for wrong credentials, 400 without credentials (10 attempts per 3 minutes per IP address) |
+| `POST` | `/games` | Create a game room. The current user becomes the host (10 per minute per user) |
 | `GET` | `/games/:room_code` | Get a game, its players and their grids, the piles (with the last 5 discarded cards) and the current player (players only). The values of face-down cards are never sent |
 | `POST` | `/games/join` | Join a pending game with `{ room_code }` (8 players maximum) |
 | `POST` | `/games/:room_code/start` | Start the game and deal the cards (host only, at least 2 players) |
@@ -82,6 +82,10 @@ All routes are under `/api/v1`. Every endpoint except sign-up and login needs an
 | `POST` | `/games/:room_code/draw` | On your turn, take a card from `{ source: "draw_pile" \| "discard_pile" }` into your hand |
 | `POST` | `/games/:room_code/swap` | Put the card in your hand in place of a grid card `{ card_id }`, which goes onto the discard pile. Removes a completed column, returned as `removed_column`. Ends the turn |
 | `POST` | `/games/:room_code/discard` | Throw a card drawn from the draw pile and reveal a face-down grid card `{ card_id }`. Removes a completed column, returned as `removed_column`. Ends the turn |
+
+Account routes: only sign-up (`POST /users`) and login (`POST /auth/login`) exist. Devise's other routes (sign in/out, password, account edit or delete) are not exposed because they do not work with the JWT flow; editing or deleting an account and "forgot password" emails are planned as dedicated endpoints.
+
+**Rate limits**: logins (10 per 3 minutes per IP address), sign-ups (5 per hour per IP address) and new games (`POST /games`, 10 per minute per user) are limited. Over the limit, the API answers `429 Too Many Requests` with a JSON error.
 
 ## Project structure
 
