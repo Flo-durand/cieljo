@@ -17,5 +17,9 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // No console output in the app: it could leak private data such as the login token
+      'no-console': 'error',
+    },
   },
 ])
