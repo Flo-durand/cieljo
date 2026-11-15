@@ -74,7 +74,6 @@ export default function PlayerGrid({
             <Card
               key={card.id}
               card={card}
-              small={small}
               style={placeAt(card.row, card.column)}
               className={[
                 isCardHidden?.(card) && 'card--hidden',
@@ -87,7 +86,6 @@ export default function PlayerGrid({
             <Card
               key={index}
               card={null}
-              small={small}
               style={{ gridRow: Math.floor(index / GRID_COLUMNS) + 1, gridColumn: (index % GRID_COLUMNS) + 1 }}
               className="card--hidden"
             />

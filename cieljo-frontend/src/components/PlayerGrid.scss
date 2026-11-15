@@ -8,10 +8,6 @@
   gap: 8px;
   width: $grid-columns * $card-width + ($grid-columns - 1) * $grid-gap;
 
-  &--small {
-    width: $grid-columns * $card-small-width + ($grid-columns - 1) * $grid-small-gap;
-  }
-
   // Every name has the same padding, so highlighting the player whose turn it is only changes colors
   // and nothing moves when the turn passes to the next player
   &__name {
@@ -38,11 +34,8 @@
     color: $color-black;
   }
 
+  // The opponents' names are a little smaller than the current player's (their cards have the same size)
   &--small &__name {
     font-size: 14px;
-  }
-
-  &--small &__cards {
-    gap: $grid-small-gap;
   }
 }

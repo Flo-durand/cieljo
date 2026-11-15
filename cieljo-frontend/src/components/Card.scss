@@ -9,16 +9,9 @@
   width: $card-width;
   height: $card-height;
   border-radius: $radius-md;
-  font-size: 24px;
+  font-size: $card-font-size;
   font-weight: bold;
   user-select: none;
-
-  &--small {
-    width: $card-small-width;
-    height: $card-small-height;
-    border-radius: $radius-sm;
-    font-size: 14px;
-  }
 
   &--face-down {
     background-color: $color-black;

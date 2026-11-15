@@ -7,7 +7,7 @@ import './Card.scss';
 // data-card-id lets the animations and the drag and drop find each card on the table.
 // A card that turns face up flips over (only transform is animated, so the layout does not move).
 // style places the card in its grid (row and column).
-export default function Card({ card, small = false, onClick, onPointerDown, className = '', style }) {
+export default function Card({ card, onClick, onPointerDown, className = '', style }) {
   const faceUp = Boolean(card?.face_up);
 
   // Remember the side shown at the previous render, to flip the card when it turns face up.
@@ -20,7 +20,6 @@ export default function Card({ card, small = false, onClick, onPointerDown, clas
   }
 
   const classes = ['card'];
-  if (small) classes.push('card--small');
   if (!card) classes.push('card--empty');
   else classes.push(faceUp ? 'card--face-up' : 'card--face-down');
   if (onClick) classes.push('card--clickable');
