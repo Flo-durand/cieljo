@@ -46,6 +46,19 @@
     margin: 0;
   }
 
+  // The middle of the table once the game is over
+  &__game-over {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: scaled(8px);
+  }
+
+  &__game-over-title {
+    margin: 0;
+    font-size: scaled(32px);
+  }
+
   &__error {
     color: $color-danger;
     font-weight: bold;

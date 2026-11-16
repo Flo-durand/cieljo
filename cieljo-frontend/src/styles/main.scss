@@ -26,6 +26,7 @@ body {
     success: $color-success,
     danger: $color-danger,
     info: $color-info,
+    secondary: $color-text-muted,
   );
 
   @each $name, $color in $variants {

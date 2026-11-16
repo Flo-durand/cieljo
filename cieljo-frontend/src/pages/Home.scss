@@ -36,6 +36,47 @@
     color: $color-success;
   }
 
+  // The games of the user, to come back to a paused game
+  &__games {
+    @include card;
+    margin-top: 30px;
+    text-align: left;
+
+    h3 {
+      margin-top: 0;
+    }
+  }
+
+  &__games-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__game {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  &__game-code {
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+
+  &__game-state {
+    flex: 1;
+    color: $color-text-muted;
+
+    &--your-turn {
+      color: $color-success;
+      font-weight: bold;
+    }
+  }
+
   &__panel {
     @include dashed-panel(30px, $radius-lg);
     margin: 40px 0;

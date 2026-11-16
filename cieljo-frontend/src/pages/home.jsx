@@ -3,6 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { apiFetch, logout } from '../api';
 import './Home.scss';
 
+// One line about a game of the user: the lobby, the reveal of the first cards, or whose turn it is
+function gameState(game) {
+  if (game.status === 'pending') return `Lobby · ${game.players_count}/${game.max_players} players`;
+  if (game.initial_reveal) return 'Revealing the first cards';
+  if (game.your_turn) return 'Your turn!';
+  return game.current_player ? `${game.current_player}'s turn` : 'In progress';
+}
+
 export default function Home() {
   const navigate = useNavigate();
 
@@ -28,6 +36,29 @@ export default function Home() {
     };
 
     checkSession();
+    return () => {
+      active = false;
+    };
+  }, [token]);
+
+  // The games of the user in the lobby or in progress, to come back to a paused game
+  const [myGames, setMyGames] = useState([]);
+  useEffect(() => {
+    if (!token) return undefined;
+    let active = true;
+
+    const loadMyGames = async () => {
+      try {
+        const response = await apiFetch('/games');
+        if (!response.ok || !active) return;
+        const data = await response.json();
+        setMyGames(data.data);
+      } catch {
+        // The backend cannot be reached: no list, the actions will show the error
+      }
+    };
+
+    loadMyGames();
     return () => {
       active = false;
     };
@@ -116,6 +147,29 @@ export default function Home() {
           <p className="home__welcome">
             Welcome back, <strong>{username}</strong>! 🟢
           </p>
+
+          {myGames.length > 0 && (
+            <section className="home__games" aria-labelledby="home-games-title">
+              <h3 id="home-games-title">Your games</h3>
+              <ul className="home__games-list">
+                {myGames.map(game => (
+                  <li key={game.room_code} className="home__game">
+                    <span className="home__game-code">{game.room_code}</span>
+                    <span className={`home__game-state ${game.your_turn ? 'home__game-state--your-turn' : ''}`}>
+                      {gameState(game)}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn--success home__action"
+                      onClick={() => navigate(`/game/${game.room_code}`)}
+                    >
+                      {game.status === 'pending' ? 'Open' : 'Resume'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <div className="home__panel">
             <h3>🎮 Game actions</h3>

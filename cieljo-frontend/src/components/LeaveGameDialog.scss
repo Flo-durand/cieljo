@@ -1,0 +1,39 @@
+@use '../styles/variables' as *;
+
+// A box over the dimmed page; clicking the dimmed area keeps playing
+.leave-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background-color: rgba($color-black, 0.5);
+
+  &__box {
+    width: 100%;
+    max-width: 420px;
+    padding: 24px;
+    border-radius: $radius-lg;
+    background-color: $color-white;
+    box-shadow: 0 10px 30px rgba($color-black, 0.3);
+    text-align: center;
+  }
+
+  &__title {
+    margin: 0 0 8px;
+  }
+
+  &__text {
+    margin: 0 0 20px;
+    color: $color-text-soft;
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+}
