@@ -61,11 +61,19 @@ describe('tableMessage', () => {
       .toBe("Column removed! Last round: you revealed all your cards. It's player_2's turn.");
   });
 
-  it('gives the winners once the round is scored', () => {
+  it('gives the winners of the game at its end', () => {
     const scored = players(2).map((player, index) => ({ ...player, score: [12, 3][index] }));
 
     expect(tableMessage(table({ players: scored, currentPlayerId: null, lastRound: false, roundScored: true })))
-      .toBe('The round is over: player_2 wins!');
+      .toBe('The game is over: player_2 wins!');
+  });
+
+  it('gives the winners of the round between two rounds', () => {
+    const scored = players(2).map((player, index) => ({ ...player, score: [12, 30][index], round_points: [12, 3][index] }));
+
+    expect(tableMessage(table({
+      players: scored, currentPlayerId: null, lastRound: false, roundScored: true, roundOver: true, roundNumber: 2,
+    }))).toBe('Round 2 is over: player_2 wins the round! Get ready for the next one.');
   });
 });
 

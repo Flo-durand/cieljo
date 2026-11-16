@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { lastRoundText, roundRanking, winnersText } from './roundScores';
+import {
+  lastRoundText, nextRoundText, playedRounds, roundPointsOf, roundRanking, winnersText,
+} from './roundScores';
 import { players } from './testHelpers';
 
 // Players 1..count with the given scores; player 1 is the current user unless `me` says otherwise
@@ -52,5 +54,47 @@ describe('lastRoundText', () => {
 
   it('still says it is the last round when that player has quit', () => {
     expect(lastRoundText({ lastRound: true, roundEnderId: null, players: all })).toBe('Last round!');
+  });
+});
+
+describe('ranking by the points of the round', () => {
+  const withRound = (scores, points) => scored(scores).map((player, index) => ({ ...player, round_points: points[index] }));
+
+  it('ranks the players by the points of the round when asked', () => {
+    expect(roundRanking(withRound([10, 50], [10, 2]), roundPointsOf)[0].id).toBe(2);
+  });
+
+  it('names the winners of the round', () => {
+    expect(winnersText(withRound([10, 50], [10, 2]), { pointsOf: roundPointsOf, what: ' the round' }))
+      .toBe('player_2 wins the round!');
+    expect(winnersText(withRound([10, 50], [2, 2]), { pointsOf: roundPointsOf, what: ' the round' }))
+      .toBe('you and player_2 win the round!');
+  });
+});
+
+describe('playedRounds', () => {
+  it('lists the rounds scored so far, in order', () => {
+    const all = scored([0, 0]).map((player, index) => ({
+      ...player,
+      rounds: index === 0 ? [{ round_number: 2 }, { round_number: 1 }] : [{ round_number: 1 }],
+    }));
+
+    expect(playedRounds(all)).toEqual([1, 2]);
+  });
+
+  it('is empty before the first round is scored', () => {
+    expect(playedRounds(scored([0, 0]))).toEqual([]);
+  });
+});
+
+describe('nextRoundText', () => {
+  const ready = flags => scored(flags.map(() => 0)).map((player, index) => ({ ...player, ready: flags[index] }));
+
+  it('gives the time left and how many players are ready', () => {
+    expect(nextRoundText(ready([true, false, false]), 23)).toBe('Next round in 23 s · 1/3 players ready');
+  });
+
+  it('says the next round is starting once the time is up', () => {
+    expect(nextRoundText(ready([true, true]), 0)).toBe('Starting the next round... · 2/2 players ready');
   });
 });

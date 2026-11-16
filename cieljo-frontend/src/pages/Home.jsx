@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { apiFetch, logout } from '../api';
 import './Home.scss';
 
-// One line about a game of the user: the lobby, the reveal of the first cards, or whose turn it is
+// One line about a game of the user: the lobby, the end of a round, the reveal of the first cards, or whose turn
+// it is
 function gameState(game) {
   if (game.status === 'pending') return `Lobby · ${game.players_count}/${game.max_players} players`;
+  if (game.status === 'round_over') return `Round ${game.round_number} over · next round soon`;
   if (game.initial_reveal) return 'Revealing the first cards';
   if (game.your_turn) return 'Your turn!';
   return game.current_player ? `${game.current_player}'s turn` : 'In progress';

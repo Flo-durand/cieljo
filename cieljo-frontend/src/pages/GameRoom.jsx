@@ -50,6 +50,10 @@ export default function GameRoom() {
   const [lastRound, setLastRound] = useState(false);
   const [roundEnderId, setRoundEnderId] = useState(null);
   const [roundScored, setRoundScored] = useState(false);
+  // Several rounds: the round being played (or just scored), and between two rounds the time (from Date.now())
+  // when the next one starts even if some players are not ready
+  const [roundNumber, setRoundNumber] = useState(1);
+  const [nextRoundDeadline, setNextRoundDeadline] = useState(null);
   const [error, setError] = useState('');
   // True while an action (start, reveal, turn) is being sent, to block double clicks
   const [isActing, setIsActing] = useState(false);
@@ -96,8 +100,9 @@ export default function GameRoom() {
       if (!isLatest()) return;
 
       if (response.ok) {
-        // Only animate a start seen live: reopening a started game shows the cards right away
-        const startSeenLive = lastStatusRef.current === 'pending' && data.data.status === 'in_progress';
+        // Only animate a deal seen live (the start of the game or of the next round): reopening a started game
+        // shows the cards right away
+        const startSeenLive = ['pending', 'round_over'].includes(lastStatusRef.current) && data.data.status === 'in_progress';
         if (startSeenLive && animationsAllowedRef.current && !catchUp) {
           setDeal(buildDeal(data.data.players, data.data.discard_top));
         }
@@ -115,6 +120,10 @@ export default function GameRoom() {
         setLastRound(data.data.last_round);
         setRoundEnderId(data.data.round_ender_id);
         setRoundScored(data.data.round_scored);
+        setRoundNumber(data.data.round_number);
+        // The server counts the time left, so the clock of this device does not matter
+        const nextRoundIn = data.data.next_round_in;
+        setNextRoundDeadline(nextRoundIn === null ? null : Date.now() + nextRoundIn * 1000);
         setError('');
       } else {
         setError(data.error || 'Could not load the game.');
@@ -194,11 +203,32 @@ export default function GameRoom() {
     }
   };
 
+  // Between two rounds, the page says the player is ready once the countdown ends, even if they did not click: the
+  // server starts the next round when a player asks after the delay, so a player who has gone away blocks nobody.
+  // The deadline is updated by every load: the request is sent again until the next round has started.
+  const roundOver = status === 'round_over';
+  // It is sent quietly: another player may have started the next round just before (the server then refuses it).
+  useEffect(() => {
+    if (!roundOver || nextRoundDeadline === null) return undefined;
+    const sendReady = async () => {
+      try {
+        const response = await apiFetch(`/games/${room_code}/ready`, { method: 'POST' });
+        if (response.ok) loadGame();
+      } catch {
+        // The next load shows the game as it is, and sends the request again if needed
+      }
+    };
+    // A short margin, so the request does not reach the server just before the end of the delay
+    const timeoutId = setTimeout(sendReady, Math.max(0, nextRoundDeadline - Date.now()) + 500);
+    return () => clearTimeout(timeoutId);
+  }, [roundOver, nextRoundDeadline, room_code, loadGame]);
+
   // Only the host can start the game
   const isHost = players.some(player => player.host && player.current_user);
   const canStart = players.length >= 2 && !isActing;
 
   const handleStartGame = () => postAction('start');
+  const handleReady = () => postAction('ready');
   const handleRevealCard = cardId => postAction('reveal', { card_id: cardId });
   const handleDraw = source => postAction('draw', { source });
   const handleSwap = cardId => postAction('swap', { card_id: cardId });
@@ -236,8 +266,8 @@ export default function GameRoom() {
     }
   };
 
-  // After a scored round, the player goes home but stays in the game, so the others still see every score; the
-  // game is deleted by the cleanup of inactive games. A game finished because the others quit is left right away.
+  // At the end of the game (a player reached the end score), the player goes home but stays in the game, so the
+  // others still see every score; the game is deleted by the cleanup of inactive games. A game finished because the others quit is left right away.
   // Otherwise the dialog asks how to leave.
   const goHome = () => navigate('/');
   const handleLeaveGame = () => {
@@ -311,6 +341,8 @@ export default function GameRoom() {
   } else if (rules) {
     table = (
       <GameTable
+        // A new table for each round: the deal, the scores and the changes seen on the table start afresh
+        key={roundNumber}
         roomCode={room_code}
         rules={rules}
         players={players}
@@ -323,6 +355,10 @@ export default function GameRoom() {
         lastRound={lastRound}
         roundEnderId={roundEnderId}
         roundScored={roundScored}
+        roundNumber={roundNumber}
+        roundOver={roundOver}
+        nextRoundDeadline={nextRoundDeadline}
+        onReady={handleReady}
         busy={isActing}
         onRevealCard={handleRevealCard}
         onDraw={handleDraw}
@@ -356,7 +392,7 @@ export default function GameRoom() {
 
         {leaveDialogOpen && (
           <LeaveGameDialog
-            inProgress={status === 'in_progress'}
+            inProgress={status === 'in_progress' || roundOver}
             busy={isActing}
             onLeave={leaveGame}
             onPause={() => navigate('/')}

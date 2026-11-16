@@ -1,4 +1,4 @@
-import { lastRoundText, winnersText } from './roundScores';
+import { lastRoundText, roundPointsOf, winnersText } from './roundScores';
 
 // The message shown in the info bubble of the game table (see InfoButton): what to do, or whose turn it is.
 
@@ -6,11 +6,16 @@ export const faceUpCount = player => player.grid.filter(card => card.face_up).le
 
 // The message for the current state of the table. notice ("player_one removed a column of 5s!") comes first,
 // then the reminder of the last round. initialRevealCount is the number of cards each player reveals at the
-// start (from the rules of the API). Once the round is scored, the message gives the winners.
+// start (from the rules of the API). Once the round is scored, the message gives the winners: of the round
+// between two rounds (roundOver), of the game at its end (the lowest total).
 export function tableMessage(state) {
-  const parts = state.roundScored
-    ? [state.notice, `The round is over: ${winnersText(state.players)}`]
-    : [state.notice, lastRoundText(state), turnMessage(state)];
+  let parts = [state.notice, lastRoundText(state), turnMessage(state)];
+  if (state.roundOver) {
+    const winners = winnersText(state.players, { pointsOf: roundPointsOf, what: ' the round' });
+    parts = [state.notice, `Round ${state.roundNumber} is over: ${winners} Get ready for the next one.`];
+  } else if (state.roundScored) {
+    parts = [state.notice, `The game is over: ${winnersText(state.players)}`];
+  }
   return parts.filter(Boolean).join(' ');
 }
 
