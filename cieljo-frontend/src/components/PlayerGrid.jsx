@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from 'react';
 import { useAnimationsAllowed } from '../contexts/AnimationsContext';
 import Card from './Card';
+import { cardLabel, gridLabel } from '../game/cardLabel';
 import './PlayerGrid.scss';
 
 const CLOSE_MS = 400; // the remaining columns slide together after a column is removed
@@ -16,6 +17,8 @@ const CLOSE_MS = 400; // the remaining columns slide together after a column is 
 // canClickCard(card) tells which cards the player can click, and onCardClick(card) handles the click.
 // isCardHidden(card) hides the cards that an animation has not brought yet or has taken away.
 // isDropTarget(card) highlights the card under a dragged card.
+// For screen readers, the cards form a group named after the player, and each card says where it is in the grid
+// (rows and columns counted from 1, as drawn: a removed column is not counted).
 export default function PlayerGrid({
   player, gridRows, gridColumns, small = false, isPlaying = false, canClickCard, onCardClick, isCardHidden, isDropTarget,
   extraCards = [],
@@ -68,13 +71,14 @@ export default function PlayerGrid({
         {player.username}
         {player.current_user && ' (you)'}
       </div>
-      <div className="player-grid__cards" style={{ gridTemplateColumns: `repeat(${columns.length || gridColumns}, auto)` }}>
+      <div className="player-grid__cards" role="group" aria-label={gridLabel(player)} style={{ gridTemplateColumns: `repeat(${columns.length || gridColumns}, auto)` }}>
         {cards.length > 0
           ? cards.map(card => (
             <Card
               key={card.id}
               card={card}
               style={placeAt(card.row, card.column)}
+              label={cardLabel(card, { row: card.row + 1, column: columns.indexOf(card.column) + 1 })}
               className={[
                 isCardHidden?.(card) && 'card--hidden',
                 isDropTarget?.(card) && 'card--drop-target',

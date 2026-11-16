@@ -178,7 +178,9 @@ export default function Home() {
 
             {showJoinForm && (
               <form onSubmit={handleJoinGame} className="home__join-form">
+                <label htmlFor="home-room-code" className="home__join-label">Room code</label>
                 <input
+                  id="home-room-code"
                   type="text"
                   placeholder="Room code (e.g. XF4G)"
                   value={roomCode}

@@ -9,7 +9,8 @@ export function tableMessage(state) {
   return state.notice ? `${state.notice} ${message}` : message;
 }
 
-function turnMessage({ me, players, initialReveal, initialRevealCount, currentPlayerId, dealing, hand }) {
+// handSelected is true when the player has clicked the card in hand, to swap it by clicks (see GameTable.jsx).
+function turnMessage({ me, players, initialReveal, initialRevealCount, currentPlayerId, dealing, hand, handSelected }) {
   if (dealing) return 'Dealing the cards...';
 
   if (initialReveal) {
@@ -23,8 +24,8 @@ function turnMessage({ me, players, initialReveal, initialRevealCount, currentPl
   if (!playing.current_user) return `It's ${playing.username}'s turn.`;
 
   if (!hand) return 'Your turn: draw a card from the draw pile, or take the discard pile card.';
-  if (hand.drawn_from === 'draw_pile') {
-    return 'Drag the card onto your grid to swap it, or click a hidden card to throw it and reveal that card.';
-  }
-  return 'Drag the card onto your grid to swap it.';
+  if (handSelected) return 'Click the card of your grid to replace, or click your card again to cancel.';
+  const swap = 'Drag the card onto your grid to swap it (or click it, then the card to replace)';
+  if (hand.drawn_from === 'draw_pile') return `${swap}, or click a hidden card to throw it and reveal that card.`;
+  return `${swap}.`;
 }

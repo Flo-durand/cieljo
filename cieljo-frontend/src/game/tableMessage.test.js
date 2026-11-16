@@ -39,8 +39,16 @@ describe('tableMessage', () => {
   it('guides the current player through their turn', () => {
     expect(tableMessage(table())).toBe('Your turn: draw a card from the draw pile, or take the discard pile card.');
     expect(tableMessage(table({ hand: { drawn_from: 'draw_pile' } })))
-      .toBe('Drag the card onto your grid to swap it, or click a hidden card to throw it and reveal that card.');
-    expect(tableMessage(table({ hand: { drawn_from: 'discard_pile' } }))).toBe('Drag the card onto your grid to swap it.');
+      .toBe('Drag the card onto your grid to swap it (or click it, then the card to replace), ' +
+        'or click a hidden card to throw it and reveal that card.');
+    expect(tableMessage(table({ hand: { drawn_from: 'discard_pile' } })))
+      .toBe('Drag the card onto your grid to swap it (or click it, then the card to replace).');
+  });
+
+  it('tells how to finish a swap by clicks once the card in hand is selected', () => {
+    const message = 'Click the card of your grid to replace, or click your card again to cancel.';
+    expect(tableMessage(table({ hand: { drawn_from: 'draw_pile' }, handSelected: true }))).toBe(message);
+    expect(tableMessage(table({ hand: { drawn_from: 'discard_pile' }, handSelected: true }))).toBe(message);
   });
 
   it('puts the notice first', () => {

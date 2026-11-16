@@ -3,13 +3,15 @@ import { useAnimationsAllowed } from '../contexts/AnimationsContext';
 import './Card.scss';
 
 // A single Skyjo card: plain black when face down, its value in a bordered box when face up.
-// When onClick is given, the card is rendered as a button the player can click.
-// When onPointerDown is given, the card can be dragged (see hooks/useCardDrag.js).
+// When onClick is given, the card is rendered as a button the player can click (or press with the keyboard).
+// When onPointerDown is given, the card can be dragged (see hooks/useCardDrag.js), and clicked as well.
+// label names the card for screen readers (see game/cardLabel.js); pressed makes the button a toggle
+// (aria-pressed), e.g. the card in hand selected for a swap.
 // data-card-id lets the animations and the drag and drop find each card on the table.
 // A card that turns face up flips over (only transform is animated, so the layout does not move), when the
 // animations are allowed (see AnimationsContext).
 // style places the card in its grid (row and column).
-export default function Card({ card, onClick, onPointerDown, className = '', style }) {
+export default function Card({ card, onClick, onPointerDown, label, pressed, className = '', style }) {
   const faceUp = Boolean(card?.face_up);
 
   // Remember the side shown at the previous render, to flip the card when it turns face up.
@@ -44,8 +46,17 @@ export default function Card({ card, onClick, onPointerDown, className = '', sty
   };
 
   if (onClick) {
-    return <button type="button" {...props} onClick={onClick}>{content}</button>;
+    return (
+      <button type="button" {...props} aria-label={label} aria-pressed={pressed} onClick={onClick} onPointerDown={onPointerDown}>
+        {content}
+      </button>
+    );
   }
 
-  return <div {...props} onPointerDown={onPointerDown}>{content}</div>;
+  // A card that cannot be clicked is still described to screen readers, as an image with its label
+  return (
+    <div {...props} role={label ? 'img' : undefined} aria-label={label} onPointerDown={onPointerDown}>
+      {content}
+    </div>
+  );
 }

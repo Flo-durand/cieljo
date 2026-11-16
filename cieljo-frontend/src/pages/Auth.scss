@@ -11,25 +11,34 @@
     text-decoration: none;
   }
 
+  // Red with enough contrast on white
   &__message {
-    color: red;
+    color: $color-danger;
+  }
+
+  &__label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: bold;
   }
 
   &__input {
     width: 100%;
     padding: 8px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     box-sizing: border-box;
+  }
 
-    // The password field is the last input of both forms
-    &:last-of-type {
-      margin-bottom: 20px;
-    }
+  &__hint {
+    margin: -8px 0 12px;
+    color: $color-text-muted;
+    font-size: 0.9em;
   }
 
   &__submit {
     width: 100%;
     padding: 10px;
+    margin-top: 8px;
   }
 
   &__switch {
@@ -37,8 +46,15 @@
     text-align: center;
   }
 
+  // A button that looks like a link: it switches between the two forms
   &__switch-link {
+    padding: 0;
+    border: none;
+    background: none;
     color: $color-primary;
+    font: inherit;
+    text-decoration: underline;
     cursor: pointer;
   }
+
 }
