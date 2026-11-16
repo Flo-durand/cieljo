@@ -2,12 +2,12 @@
 
 one:
   game: one
-  host_id: 1
-  guest_id: 1
-  status: MyString
+  host: one
+  guest: two
+  status: pending
 
 two:
   game: two
-  host_id: 1
-  guest_id: 1
-  status: MyString
+  host: two
+  guest: one
+  status: declined

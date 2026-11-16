@@ -2,10 +2,10 @@
 
 one:
   user: one
-  friend_id: 1
-  status: MyString
+  friend: two
+  status: accepted
 
 two:
   user: two
-  friend_id: 1
-  status: MyString
+  friend: one
+  status: pending
