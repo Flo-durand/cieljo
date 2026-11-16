@@ -59,7 +59,10 @@ class Api::V1::GamesControllerTest < ActionDispatch::IntegrationTest
   test "the game details give the rules the frontend needs" do
     get api_v1_game_url("ABCD"), headers: auth_headers(users(:one)), as: :json
 
-    expected = { "grid_rows" => 3, "grid_columns" => 4, "initial_reveal_count" => 2, "max_players" => 8 }
+    expected = {
+      "grid_rows" => 3, "grid_columns" => 4, "initial_reveal_count" => 2, "max_players" => 8,
+      "end_score" => 100, "next_round_delay" => 30
+    }
     assert_equal expected, response.parsed_body.dig("data", "rules")
   end
 
@@ -549,12 +552,84 @@ class Api::V1::GamesControllerTest < ActionDispatch::IntegrationTest
     RoundEndService.new(game).call
 
     data = show_as(users(:two))
-    assert_equal "finished", data["status"]
+    assert_equal "round_over", data["status"]
     assert data["round_scored"]
     one, two = data["players"]
     assert_equal [ 48, 48, true ], one.values_at("score", "round_points", "round_doubled")
     assert_equal [ 12, 12, false ], two.values_at("score", "round_points", "round_doubled")
     assert one["grid"].all? { |card| card["face_up"] && card["value"] == 2 }
+  end
+
+  # --- Several rounds ---
+
+  # Game one with its first round scored: 12 points for player one, 24 (doubled) for player two
+  def score_first_round
+    game = start_turns
+    game.players.update_all(score: 0)
+    game.update!(round_ender_turn_order: 2)
+    grid_of(game, :one).update_all(value: 1)
+    grid_of(game, :two).update_all(value: 1)
+    RoundEndService.new(game).call
+    game
+  end
+
+  test "between two rounds, the game details give the history, who is ready and the time left" do
+    freeze_time do
+      score_first_round
+      travel 10.seconds
+      play(:ready, users(:one))
+
+      data = show_as(users(:two))
+      assert_equal [ 1, 20 ], data.values_at("round_number", "next_round_in")
+      one, two = data["players"]
+      assert_equal [ { "round_number" => 1, "points" => 12, "doubled" => false } ], one["rounds"]
+      assert_equal [ { "round_number" => 1, "points" => 24, "doubled" => true } ], two["rounds"]
+      assert_equal [ true, false ], [ one["ready"], two["ready"] ]
+    end
+  end
+
+  test "the next round starts when every player is ready" do
+    score_first_round
+
+    play(:ready, users(:one))
+    assert_response :ok
+    assert_equal "round_over", response.parsed_body.dig("data", "status")
+    play(:ready, users(:two))
+
+    assert_response :ok
+    assert_equal [ "in_progress", 2 ], response.parsed_body["data"].values_at("status", "round_number")
+    data = show_as(users(:one))
+    assert data["initial_reveal"]
+    assert_not data["round_scored"]
+    assert_nil data["next_round_in"]
+    assert_equal [ nil, nil ], data["players"].first.values_at("round_points", "round_doubled")
+    assert_equal [ 12 ], data["players"].first["rounds"].map { |round| round["points"] }
+  end
+
+  test "getting ready outside the end of a round is refused" do
+    start_turns
+
+    play(:ready, users(:one))
+
+    assert_response :unprocessable_entity
+    assert_equal "The round is not over.", response.parsed_body["error"]
+  end
+
+  test "only the players of a game can get ready" do
+    score_first_round
+
+    stranger = User.create!(email: "stranger@example.com", username: "stranger", password: "password123")
+    play(:ready, stranger)
+
+    assert_response :forbidden
+  end
+
+  test "the games between two rounds are listed" do
+    score_first_round
+
+    games = my_games(users(:one))
+
+    assert_equal [ [ "ABCD", "round_over", 1 ] ], games.map { |game| game.values_at("room_code", "status", "round_number") }
   end
 
   # --- Leaving a game ---

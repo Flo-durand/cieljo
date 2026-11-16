@@ -10,7 +10,7 @@ class Game < ApplicationRecord
   belongs_to :current_player, class_name: "Player", optional: true
 
   validates :room_code, presence: true, uniqueness: true
-  validates :status, inclusion: { in: %w[pending in_progress finished] }
+  validates :status, inclusion: { in: %w[pending in_progress round_over finished] }
   # Where the current player took the card in their hand from (nil when they hold no card)
   validates :drawn_from, inclusion: { in: %w[draw_pile discard_pile] }, allow_nil: true
 
@@ -18,6 +18,10 @@ class Game < ApplicationRecord
   INITIAL_REVEAL_COUNT = 2
   # The official Skyjo rules are for 2 to 8 players
   MAX_PLAYERS = 8
+  # The game ends with the round in which a player reaches this total score
+  END_SCORE = 100
+  # Between two rounds, the next one starts once every player is ready, or after this delay
+  NEXT_ROUND_DELAY = 30.seconds
 
   # Automatically generate a unique 4-character room code before creating the game
   before_validation :generate_room_code, on: :create
@@ -53,10 +57,16 @@ class Game < ApplicationRecord
     round_ender_turn_order && players.find_by(turn_order: round_ender_turn_order)
   end
 
-  # A game is finished either at the end of the round, with scores, or because only one player is left after
-  # the others quit (see LeaveGameService), without scores
+  # The round is scored between two rounds (round_over) and at the end of the game when a player reached
+  # END_SCORE. A game finished because only one player is left after the others quit (see LeaveGameService) has
+  # no scores to show for its round.
   def round_scored?
-    status == "finished" && round_ender_turn_order.present?
+    status == "round_over" || (status == "finished" && round_ender_turn_order.present?)
+  end
+
+  # Between two rounds: when the next round starts even if some players are not ready (see NextRoundService)
+  def next_round_at
+    round_ended_at && round_ended_at + NEXT_ROUND_DELAY
   end
 
   # Puts a card face up on top of the discard pile. The discard pile is ordered by updated_at: each card put on

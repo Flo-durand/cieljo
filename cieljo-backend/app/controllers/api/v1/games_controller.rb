@@ -5,12 +5,13 @@ class Api::V1::GamesController < ApplicationController
   # Each new game inserts 150 cards: 10 new games per minute for a user (runs after authenticate_user!)
   rate_limit to: 10, within: 1.minute, only: :create, by: -> { current_user.id }, with: -> { render_rate_limited }
 
-  before_action :set_game, only: %i[show start leave reveal draw swap discard]
-  before_action :set_current_player, only: %i[show leave reveal draw swap discard]
+  before_action :set_game, only: %i[show start leave reveal draw swap discard ready]
+  before_action :set_current_player, only: %i[show leave reveal draw swap discard ready]
 
-  # GET /api/v1/games: the games of the current user in the lobby or in progress, the most recently active first
+  # GET /api/v1/games: the games of the current user in the lobby, in progress or between two rounds, the most
+  # recently active first
   def index
-    games = Game.where(status: %w[pending in_progress])
+    games = Game.where(status: %w[pending in_progress round_over])
                 .where(id: current_user.players.select(:game_id))
                 .includes(:players, current_player: :user)
                 .order(updated_at: :desc)
@@ -22,6 +23,7 @@ class Api::V1::GamesController < ApplicationController
           status: game.status,
           players_count: game.players.size,
           max_players: Game::MAX_PLAYERS,
+          round_number: game.round_number,
           initial_reveal: game.initial_reveal_phase?,
           current_player: game.current_player && game.status == "in_progress" ? game.current_player.user.username : nil,
           your_turn: game.status == "in_progress" && game.current_player&.user_id == current_user.id
@@ -31,10 +33,8 @@ class Api::V1::GamesController < ApplicationController
   end
 
   def show
-    players = @game.players.includes(:user).order(:turn_order)
+    players = @game.players.includes(:user, :round_results).order(:turn_order)
     grids = @game.cards.where(location: "player_grid").order(:row, :column).group_by(&:player_id)
-    # The points of the round, once it is over (every card of the grids is then face up)
-    round_results = @game.round_scored? ? RoundScoring.new(@game).results.index_by { |result| result.player.id } : {}
 
     render json: {
       data: {
@@ -46,8 +46,15 @@ class Api::V1::GamesController < ApplicationController
           grid_rows: GameStarterService::GRID_ROWS,
           grid_columns: GameStarterService::GRID_COLUMNS,
           initial_reveal_count: Game::INITIAL_REVEAL_COUNT,
-          max_players: Game::MAX_PLAYERS
+          max_players: Game::MAX_PLAYERS,
+          end_score: Game::END_SCORE,
+          next_round_delay: Game::NEXT_ROUND_DELAY.to_i
         },
+        # The round being played (or just scored), 1 for the first one
+        round_number: @game.round_number,
+        # Between two rounds (status round_over): the seconds left before the next round starts even if some
+        # players are not ready (counted by the server, so the clock of each device does not matter)
+        next_round_in: @game.status == "round_over" ? [ (@game.next_round_at - Time.current).ceil, 0 ].max : nil,
         # True while the players reveal their first cards; the current player is then chosen
         initial_reveal: @game.initial_reveal_phase?,
         current_player_id: @game.current_player_id,
@@ -55,7 +62,8 @@ class Api::V1::GamesController < ApplicationController
         last_round: @game.last_round?,
         # The player who revealed all their cards first, or nil (no last round yet, or they quit)
         round_ender_id: @game.round_ender&.id,
-        # True when the game ended with the round (with scores), false when the other players quit
+        # True once the round is scored: between two rounds, or at the end of the game when a player reached
+        # end_score (false when the game ended because the other players quit)
         round_scored: @game.round_scored?,
         players: players.map do |player|
           {
@@ -64,10 +72,17 @@ class Api::V1::GamesController < ApplicationController
             turn_order: player.turn_order,
             host: player.turn_order == 1,
             current_user: player.user_id == current_user.id,
+            # The total of the rounds already scored
             score: player.score,
             # Once the round is scored: its points (already in score) and whether they were doubled
-            round_points: round_results[player.id]&.points,
-            round_doubled: round_results[player.id]&.doubled,
+            round_points: (current_round_result(player)&.points if @game.round_scored?),
+            round_doubled: (current_round_result(player)&.doubled if @game.round_scored?),
+            # The points of each round already scored, the first round first
+            rounds: player.round_results.map do |result|
+              { round_number: result.round_number, points: result.points, doubled: result.doubled }
+            end,
+            # Between two rounds: the player is ready for the next one
+            ready: player.ready_for_next_round,
             grid: (grids[player.id] || []).map { |card| card_json(card) }
           }
         end,
@@ -209,7 +224,24 @@ class Api::V1::GamesController < ApplicationController
     play_turn("Card discarded.") { |turn| turn.discard(params[:card_id]) }
   end
 
+  # POST /api/v1/games/:room_code/ready: between two rounds, the player is ready for the next one. It starts once
+  # every player is ready, or when a player sends it after the delay (see NextRoundService).
+  def ready
+    NextRoundService.new(@game, @player).call
+
+    render json: {
+      status: { code: 200, message: @game.status == "in_progress" ? "Next round started." : "Ready for the next round." },
+      data: { game_id: @game.id, room_code: @game.room_code, status: @game.status, round_number: @game.round_number }
+    }, status: :ok
+  rescue NextRoundService::Error => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
   private
+
+  def current_round_result(player)
+    player.round_results.find { |result| result.round_number == @game.round_number }
+  end
 
   def play_turn(message)
     turn = TurnService.new(@game, @player)

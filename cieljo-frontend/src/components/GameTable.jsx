@@ -22,10 +22,13 @@ import { faceUpCount, tableMessage } from '../game/tableMessage';
 // A swap is played by dragging the card in hand (or the discard pile card) onto the grid, or by clicks, which also
 // works with the keyboard: click the card in hand to select it, then the grid card to replace.
 // lastRound is true once a player (roundEnderId) has revealed all their cards. Once the round is scored
-// (roundScored), the scores replace the piles; onBack goes back to the home page.
+// (roundScored), the scores replace the piles: between two rounds (roundOver), onReady says the player is ready
+// for the next one, which starts at nextRoundDeadline at the latest; at the end of the game, onBack goes back to
+// the home page. GameRoom gives each round its own GameTable (key), so every round starts afresh.
 export default function GameTable({
   roomCode, rules, players, drawPileCount, discardTop, discardRecent = [], hand, initialReveal, currentPlayerId, busy,
-  lastRound = false, roundEnderId = null, roundScored = false,
+  lastRound = false, roundEnderId = null, roundScored = false, roundNumber = 1, roundOver = false,
+  nextRoundDeadline = null, onReady,
   onRevealCard, onDraw, onSwap, onDiscard, onTakeAndSwap, onBack, deal, onDealEnd,
 }) {
   const me = players.find(player => player.current_user);
@@ -212,7 +215,7 @@ export default function GameTable({
         <InfoButton
           message={tableMessage({
             me, players, initialReveal, initialRevealCount: rules.initialRevealCount, currentPlayerId, dealing,
-            hand: myHand, handSelected, notice, lastRound, roundEnderId, roundScored,
+            hand: myHand, handSelected, notice, lastRound, roundEnderId, roundScored, roundOver, roundNumber,
           })}
         />
       )}
@@ -231,11 +234,21 @@ export default function GameTable({
       />
 
       {scoresShown && (
-        <RoundScores players={players} onBack={onBack} busy={busy} entering={scoresShown === 'animated'} />
+        <RoundScores
+          players={players}
+          roundNumber={roundNumber}
+          roundOver={roundOver}
+          endScore={rules.endScore}
+          nextRoundDeadline={nextRoundDeadline}
+          onReady={onReady}
+          onBack={onBack}
+          busy={busy}
+          entering={scoresShown === 'animated'}
+        />
       )}
 
-      {/* The room code shown in the lobby fades out as the piles fade in */}
-      {dealing && <RoomCode code={roomCode} lines={['The game is starting!', '', '']} className="room-code--leaving" />}
+      {/* The room code shown in the lobby fades out as the piles fade in (the next rounds only fade the piles in) */}
+      {dealing && roundNumber === 1 && <RoomCode code={roomCode} lines={['The game is starting!', '', '']} className="room-code--leaving" />}
     </TableLayout>
   );
 }

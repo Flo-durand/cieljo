@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_16_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_16_170000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -76,6 +76,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_150000) do
     t.string "status", default: "pending", null: false
     t.integer "turn_number", default: 1, null: false
     t.datetime "updated_at", null: false
+    t.integer "round_number", default: 1, null: false
+    t.datetime "round_ended_at"
+    t.integer "first_player_turn_order"
     t.index ["current_player_id"], name: "index_games_on_current_player_id"
     t.index ["room_code"], name: "index_games_on_room_code", unique: true
   end
@@ -99,9 +102,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_150000) do
     t.integer "turn_order"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.boolean "ready_for_next_round", default: false, null: false
     t.index ["game_id"], name: "index_players_on_game_id"
     t.index ["user_id", "game_id"], name: "index_players_on_user_id_and_game_id", unique: true
     t.index ["user_id"], name: "index_players_on_user_id"
+  end
+
+  create_table "round_results", force: :cascade do |t|
+    t.bigint "player_id", null: false
+    t.integer "round_number", null: false
+    t.integer "points", null: false
+    t.boolean "doubled", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["player_id", "round_number"], name: "index_round_results_on_player_id_and_round_number", unique: true
+    t.index ["player_id"], name: "index_round_results_on_player_id"
   end
 
   create_table "solid_cache_entries", force: :cascade do |t|
@@ -295,6 +310,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_150000) do
   add_foreign_key "invitations", "users", column: "host_id"
   add_foreign_key "players", "games"
   add_foreign_key "players", "users"
+  add_foreign_key "round_results", "players", on_delete: :cascade
   add_foreign_key "solid_queue_batch_executions", "solid_queue_batches", column: "batch_id", on_delete: :cascade
   add_foreign_key "solid_queue_batch_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

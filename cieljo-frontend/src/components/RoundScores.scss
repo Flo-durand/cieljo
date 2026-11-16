@@ -26,6 +26,12 @@
     @include visually-hidden;
   }
 
+  // Wide enough for the name, the total and a few rounds; more rounds scroll sideways
+  &__scroll {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
   &__table {
     border-collapse: collapse;
     font-size: max(12px, #{scaled(14px)});
@@ -43,7 +49,7 @@
   }
 
   &__name {
-    max-width: scaled(180px);
+    max-width: scaled(120px);
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -54,9 +60,30 @@
     font-variant-numeric: tabular-nums;
   }
 
-  &__doubled {
-    color: $color-highlight;
+  &__total {
     font-weight: bold;
+  }
+
+  &__round abbr {
+    text-decoration: none;
+  }
+
+  &__doubled {
+    margin-left: scaled(2px);
+    color: $color-highlight;
+    font-size: 0.8em;
+    font-weight: bold;
+  }
+
+  &__ready {
+    text-align: center;
+  }
+
+  &__next {
+    margin: 0;
+    font-size: max(11px, #{scaled(12px)});
+    opacity: 0.85;
+    font-variant-numeric: tabular-nums;
   }
 
   &__row--winner {
@@ -67,7 +94,7 @@
     text-decoration: underline;
   }
 
-  &__back {
+  &__action {
     margin-top: scaled(4px);
   }
 }
