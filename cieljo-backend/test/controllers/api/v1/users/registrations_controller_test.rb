@@ -64,4 +64,25 @@ class Api::V1::Users::RegistrationsControllerTest < ActionDispatch::IntegrationT
     assert_nil response.headers["Authorization"]
     assert_nil response.parsed_body.dig("data", "token")
   end
+
+  test "a password needs at least 8 characters" do
+    assert_no_difference -> { User.count } do
+      sign_up(email: "short@example.com", password: "1234567", username: "shortpass")
+    end
+    assert_response :unprocessable_entity
+    assert_includes response.parsed_body.dig("status", "errors"), "Password is too short (minimum is 8 characters)"
+
+    sign_up(email: "long@example.com", password: "12345678", username: "longpass")
+    assert_response :ok
+  end
+
+  test "an account created with a shorter password can still log in" do
+    user = User.create!(email: "old@example.com", username: "old_player", password: "password123")
+    # Accounts created before the 8-character rule may have a 6-character password
+    user.update_column(:encrypted_password, Devise::Encryptor.digest(User, "abc123"))
+
+    post api_v1_auth_login_url, params: { user: { email: "old@example.com", password: "abc123" } }, as: :json
+
+    assert_response :ok
+  end
 end

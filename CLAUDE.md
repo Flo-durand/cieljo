@@ -49,7 +49,7 @@ Frontend tests (Vitest) cover the pure game logic in `src/game/` (`*.test.js` ne
 - CORS (`config/initializers/cors.rb`) allows the origins of `FRONTEND_ORIGIN` (comma-separated; default `http://localhost:5173` outside production, required in production), exposes the `Authorization` header and allows no credentials (no cookies).
 
 ### Authentication (custom JWT flow, not standard Devise)
-- **Sign-up**: `POST /api/v1/users` goes to `Api::V1::Users::RegistrationsController`. `sign_up` is overridden so it does not log the user in through the session.
+- **Sign-up**: `POST /api/v1/users` goes to `Api::V1::Users::RegistrationsController`. Passwords need 8 to 128 characters (`config.password_length`; checked only when a password is set, so older accounts with shorter ones can still log in). `sign_up` is overridden so it does not log the user in through the session.
 - **Login**: `POST /api/v1/auth/login` goes to `Api::V1::AuthController#login`. This is a custom endpoint, not Devise's `sessions#create`. It checks the password manually, encodes a token with `Warden::JWTAuth::UserEncoder`, and returns it as `data.token` (already prefixed with `"Bearer "`) in the JSON body, not in a header.
 - **Request auth**: `ApplicationController#authenticate_user!` **overrides** Devise's version. It decodes the token from the `Authorization` header with `Warden::JWTAuth::TokenDecoder`, loads the user from `sub`, and checks that `user.jti == payload['jti']` (JTIMatcher revocation). It sets `@current_user`. Every controller requires auth by default. Public endpoints must use `skip_before_action :authenticate_user!`.
 - `RackSessionFix` concern: Devise controllers need it in API mode because there is no session store.

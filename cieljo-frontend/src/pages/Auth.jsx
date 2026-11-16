@@ -90,7 +90,7 @@ export default function Auth() {
         <form onSubmit={handleRegister}>
           <input type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} required className="auth__input" /><br/>
           <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required className="auth__input" /><br/>
-          <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className="auth__input" /><br/>
+          <input type="password" placeholder="Password (at least 8 characters)" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} className="auth__input" /><br/>
           <button type="submit" className="btn btn--primary auth__submit">Sign up</button>
           <p className="auth__switch">
             Already have an account? <span onClick={() => { setIsLoginMode(true); setMessage(''); }} className="auth__switch-link">Log in here</span>
