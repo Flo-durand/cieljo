@@ -617,4 +617,14 @@ class Api::V1::GamesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :unauthorized
   end
+  # --- Creating a game ---
+
+  test "creates a game room with the user as host" do
+    post api_v1_games_url, headers: auth_headers(users(:two)), as: :json
+
+    assert_response :created
+    game = Game.find_by(room_code: response.parsed_body.dig("data", "room_code"))
+    assert_equal users(:two), game.players.sole.user
+    assert_equal 150, game.cards.count
+  end
 end
