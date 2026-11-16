@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { useAnimationsAllowed } from '../contexts/AnimationsContext';
 import { findDepartedPlayers, findRemovedColumns, ghostCards } from '../game/tableChanges';
 import flyCard from '../utils/flyCard';
-import prefersReducedMotion from '../utils/prefersReducedMotion';
 
 // Timings of the removed column animation
 const REMOVED_CARD_FLIGHT_MS = 450;
@@ -30,6 +30,7 @@ export default function useTableChanges({
   // "player_one removed a column of 5s!" or "player_two left the game.", shown in the info bubble until the turn
   // passes again
   const [notice, setNotice] = useState(null);
+  const animationsAllowed = useAnimationsAllowed();
 
   // Compare the grids with the previous refresh to find the removed columns, for every player.
   // Adjusting state during render is React's pattern for reacting to a prop change.
@@ -49,7 +50,8 @@ export default function useTableChanges({
         text: `${last.isMe ? 'You' : last.username} removed a column of ${last.value}s!`,
         currentPlayerId,
       });
-      if (!prefersReducedMotion()) {
+      // Without animations, the column is simply gone and the grid closes up at once
+      if (animationsAllowed) {
         setRemovals(queued => [...queued, ...found]);
         setDiscardHidden(hidden => hidden + gridRows * found.length);
       }
@@ -57,16 +59,34 @@ export default function useTableChanges({
   }
   if (notice && notice.currentPlayerId !== currentPlayerId) setNotice(null);
 
+  // Leaving the tab drops the columns still to animate: the discard pile shows its real top card and the grids
+  // are closed up at once
+  if (!animationsAllowed && (removals.length > 0 || discardHidden > 0 || flownCardIds.length > 0)) {
+    setRemovals([]);
+    setDiscardHidden(0);
+    setFlownCardIds([]);
+  }
+
   const animatingRemovalRef = useRef(false);
+  // Changes when the animation of the removed columns is dropped: a running one stops at its next step
+  const removalRunRef = useRef(0);
+  useEffect(() => {
+    if (animationsAllowed) return;
+    removalRunRef.current += 1;
+    animatingRemovalRef.current = false;
+  }, [animationsAllowed]);
   useEffect(() => {
     // Wait for the replaced or thrown card to land first: the column goes on top of it
     if (removals.length === 0 || leavingCardId || animatingRemovalRef.current) return;
     animatingRemovalRef.current = true;
     const removal = removals[0];
+    const run = removalRunRef.current;
+    const dropped = () => removalRunRef.current !== run;
 
     (async () => {
       await nextFrame();
       for (const card of ghostCards(removal, gridRows)) {
+        if (dropped()) return;
         const element = document.querySelector(`[data-card-id="${card.id}"]`);
         if (element && discardRef.current) {
           const { element: flyingCard, finished } = flyCard({
@@ -78,6 +98,10 @@ export default function useTableChanges({
           });
           setFlownCardIds(ids => [...ids, card.id]);
           await finished;
+          if (dropped()) {
+            flyingCard.remove();
+            return;
+          }
           setDiscardHidden(hidden => hidden - 1);
           // Let React show the card on the discard pile before removing the flying one, so nothing blinks
           await nextFrame();
@@ -88,6 +112,7 @@ export default function useTableChanges({
         }
         await wait(REMOVED_CARD_GAP_MS);
       }
+      if (dropped()) return;
 
       // The column leaves the grid: the remaining columns close up (see PlayerGrid)
       setRemovals(queued => queued.slice(1));

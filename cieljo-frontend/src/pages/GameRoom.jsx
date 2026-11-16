@@ -7,9 +7,26 @@ import PlayerGrid from '../components/PlayerGrid';
 import RoomCode from '../components/RoomCode';
 import TableLayout from '../components/TableLayout';
 import { buildDeal } from '../game/deal';
+import { AnimationsContext } from '../contexts/AnimationsContext';
+import { animationsAllowed } from '../game/animations';
 import { rulesFromApi } from '../game/rules';
+import usePageVisible from '../hooks/usePageVisible';
 import prefersReducedMotion from '../utils/prefersReducedMotion';
 import './GameRoom.scss';
+
+const nextFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
+
+// Ends at once every animation of the page (flying cards, flips, grids closing up, fades): each one jumps to its
+// final state, and the code waiting for its end goes on as usual
+function finishAllAnimations() {
+  document.getAnimations?.().forEach(animation => {
+    try {
+      animation.finish();
+    } catch {
+      // An animation without an end (none in this app) cannot be finished: leave it
+    }
+  });
+}
 
 // How often the player list is refreshed (until real-time updates with ActionCable)
 const REFRESH_INTERVAL_MS = 3000;
@@ -35,6 +52,17 @@ export default function GameRoom() {
   // The deal being animated, set when this page sees the game go from pending to in progress
   const [deal, setDeal] = useState(null);
   const lastStatusRef = useRef(null);
+
+  // The animations only play in front of the player (see src/game/animations.js); the table reads it from
+  // AnimationsContext, and loadGame from animationsAllowedRef (it runs outside the render)
+  const pageVisible = usePageVisible();
+  // True while the game catches up with what happened while the tab was hidden: it shows the final state at once
+  const [catchingUp, setCatchingUp] = useState(false);
+  const allowAnimations = animationsAllowed({ pageVisible, catchingUp, reducedMotion: prefersReducedMotion() });
+  const animationsAllowedRef = useRef(allowAnimations);
+  useEffect(() => {
+    animationsAllowedRef.current = allowAnimations;
+  }, [allowAnimations]);
   const handleDealEnd = useCallback(() => setDeal(null), []);
 
   // Loads of the game can cross (the refresh every few seconds and the reload after an action): every load gets
@@ -46,7 +74,9 @@ export default function GameRoom() {
   // game as it was before the action (see postAction)
   const firstValidLoadRef = useRef(0);
 
-  const loadGame = useCallback(async () => {
+  // catchUp: the load that follows the return to the tab, shown without animations
+  const loadGame = useCallback(async ({ catchUp = false } = {}) => {
+    if (catchUp) setCatchingUp(true);
     loadCountRef.current += 1;
     const loadNumber = loadCountRef.current;
     // False when a newer load is already on screen: this answer is outdated
@@ -63,7 +93,8 @@ export default function GameRoom() {
 
       if (response.ok) {
         // Only animate a start seen live: reopening a started game shows the cards right away
-        if (lastStatusRef.current === 'pending' && data.data.status === 'in_progress' && !prefersReducedMotion()) {
+        const startSeenLive = lastStatusRef.current === 'pending' && data.data.status === 'in_progress';
+        if (startSeenLive && animationsAllowedRef.current && !catchUp) {
           setDeal(buildDeal(data.data.players, data.data.discard_top));
         }
         lastStatusRef.current = data.data.status;
@@ -83,6 +114,13 @@ export default function GameRoom() {
       }
     } catch (err) {
       if (isLatest()) setError(`Could not reach the backend server. Details: ${err.message || err}`);
+    } finally {
+      if (catchUp) {
+        // Let React show the caught-up game without animations, then allow them again for what comes next
+        await nextFrame();
+        await nextFrame();
+        setCatchingUp(false);
+      }
     }
   }, [room_code]);
 
@@ -91,16 +129,26 @@ export default function GameRoom() {
   useEffect(() => {
     let intervalId = null;
 
-    const startRefreshing = () => {
+    // catchUp: back on the tab, the first load shows what happened meanwhile without animations
+    const startRefreshing = ({ catchUp = false } = {}) => {
       if (intervalId) return;
-      loadGame();
-      intervalId = setInterval(loadGame, REFRESH_INTERVAL_MS);
+      loadGame({ catchUp });
+      intervalId = setInterval(() => loadGame(), REFRESH_INTERVAL_MS);
     };
     const stopRefreshing = () => {
       clearInterval(intervalId);
       intervalId = null;
     };
-    const onVisibilityChange = () => (document.hidden ? stopRefreshing() : startRefreshing());
+    // Leaving the tab ends the animations at once (the deal included): they only play in front of the player
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        stopRefreshing();
+        finishAllAnimations();
+        setDeal(null);
+      } else {
+        startRefreshing({ catchUp: true });
+      }
+    };
 
     if (!document.hidden) startRefreshing();
     document.addEventListener('visibilitychange', onVisibilityChange);
@@ -274,29 +322,31 @@ export default function GameRoom() {
   return (
     // The title on the left of the table and the leave button on its right. The error message sits under the
     // title, so the table never moves when one shows up.
-    <div className="game-room">
-      <div className="game-room__side game-room__side--left">
-        <h2 className="game-room__title">🎰 Skyjo table: Cieljo</h2>
-        {error && <p className="game-room__error">{error}</p>}
+    <AnimationsContext.Provider value={allowAnimations}>
+      <div className="game-room">
+        <div className="game-room__side game-room__side--left">
+          <h2 className="game-room__title">🎰 Skyjo table: Cieljo</h2>
+          {error && <p className="game-room__error">{error}</p>}
+        </div>
+
+        {table}
+
+        <div className="game-room__side game-room__side--right">
+          <button onClick={handleLeaveGame} className="btn btn--danger" disabled={isActing}>
+            Leave the table
+          </button>
+        </div>
+
+        {leaveDialogOpen && (
+          <LeaveGameDialog
+            inProgress={status === 'in_progress'}
+            busy={isActing}
+            onLeave={leaveGame}
+            onPause={() => navigate('/')}
+            onClose={closeLeaveDialog}
+          />
+        )}
       </div>
-
-      {table}
-
-      <div className="game-room__side game-room__side--right">
-        <button onClick={handleLeaveGame} className="btn btn--danger" disabled={isActing}>
-          Leave the table
-        </button>
-      </div>
-
-      {leaveDialogOpen && (
-        <LeaveGameDialog
-          inProgress={status === 'in_progress'}
-          busy={isActing}
-          onLeave={leaveGame}
-          onPause={() => navigate('/')}
-          onClose={closeLeaveDialog}
-        />
-      )}
-    </div>
+    </AnimationsContext.Provider>
   );
 }

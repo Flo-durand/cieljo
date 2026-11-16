@@ -1,11 +1,13 @@
 import { useState } from 'react';
+import { useAnimationsAllowed } from '../contexts/AnimationsContext';
 import './Card.scss';
 
 // A single Skyjo card: plain black when face down, its value in a bordered box when face up.
 // When onClick is given, the card is rendered as a button the player can click.
 // When onPointerDown is given, the card can be dragged (see hooks/useCardDrag.js).
 // data-card-id lets the animations and the drag and drop find each card on the table.
-// A card that turns face up flips over (only transform is animated, so the layout does not move).
+// A card that turns face up flips over (only transform is animated, so the layout does not move), when the
+// animations are allowed (see AnimationsContext).
 // style places the card in its grid (row and column).
 export default function Card({ card, onClick, onPointerDown, className = '', style }) {
   const faceUp = Boolean(card?.face_up);
@@ -14,10 +16,13 @@ export default function Card({ card, onClick, onPointerDown, className = '', sty
   // Adjusting state during render is React's pattern for reacting to a prop change.
   const [wasFaceUp, setWasFaceUp] = useState(faceUp);
   const [flipping, setFlipping] = useState(false);
+  const animationsAllowed = useAnimationsAllowed();
   if (faceUp !== wasFaceUp) {
     setWasFaceUp(faceUp);
-    setFlipping(faceUp);
+    setFlipping(faceUp && animationsAllowed);
   }
+  // Leaving the tab ends a flip at once
+  if (flipping && !animationsAllowed) setFlipping(false);
 
   const classes = ['card'];
   if (!card) classes.push('card--empty');
