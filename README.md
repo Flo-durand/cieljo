@@ -43,7 +43,7 @@ npm install
 npm run dev          # app on http://localhost:5173
 ```
 
-The frontend calls the API at `http://localhost:3000/api/v1`, and CORS only allows `http://localhost:5173`. Keep these default ports.
+By default the frontend calls the API at `http://localhost:3000/api/v1`, and the API only accepts calls from `http://localhost:5173` (CORS). Keep these default ports, or change them with `VITE_API_URL` (copy `cieljo-frontend/.env.example` to `.env.local`) and `FRONTEND_ORIGIN` on the backend.
 
 ## How to play (current state)
 
@@ -123,6 +123,49 @@ Each component's `.scss` file sits next to its `.jsx` file.
 - **Reveal phase**: after the deal, the game is `in_progress` without a `current_player` until every player has revealed 2 cards. The player with the highest total then becomes the current player (on a tie, the first in turn order).
 - **Turns**: the current player draws a card (`games.drawn_from` remembers whether it comes from the draw pile or the discard pile), then swaps it or, for a draw pile card, discards it and reveals a grid card. The turn then goes to the next player in turn order. When the draw pile is empty, it is refilled with the discard pile except its top card.
 - **Column removal**: after a move, a column of 3 face-up cards of the same value goes onto the discard pile; the other cards keep their row and column, and the grid closes up on screen.
+
+## Deploying to Render
+
+The whole app is described in `render.yaml` (a Render Blueprint): the Rails API, its PostgreSQL database and the React frontend, all in Frankfurt.
+
+| Part | On Render | Plan |
+| --- | --- | --- |
+| API (`cieljo-backend`) | Web service `cieljo-api` | Starter (~7 $/month, always on) |
+| Database | PostgreSQL `cieljo-db` | `0.1c-256mb` (~6–7 $/month) |
+| Frontend (`cieljo-frontend`) | Static site `cieljo` | Free, within the included bandwidth |
+
+Check the current prices on Render before creating the services.
+
+### First deployment
+
+1. Create a Render account and connect it to GitHub.
+2. In the Render dashboard, choose **New → Blueprint** and select this repository. Render reads `render.yaml` and lists the database and the two services.
+3. Render asks for the two values it cannot guess:
+   - `FRONTEND_ORIGIN` (API): the address of the frontend, for example `https://cieljo.onrender.com`;
+   - `VITE_API_URL` (frontend): the address of the API, for example `https://cieljo-api.onrender.com/api/v1`.
+4. Create the Blueprint. Render creates the database, builds both parts, prepares the database (`bin/rails db:prepare`) and starts the API.
+5. If Render gave the services other addresses (a name already taken gets a suffix), update `FRONTEND_ORIGIN` in the API's **Environment** and `VITE_API_URL` in the frontend's **Environment**, then redeploy the frontend: `VITE_API_URL` is built into its JavaScript.
+6. Check that `https://<api address>/up` answers with a green page, then open the frontend and create an account.
+
+On the first build of the frontend, check in the log that the published folder is `dist`.
+
+### Environment variables
+
+| Variable | Service | Set by |
+| --- | --- | --- |
+| `DATABASE_URL` | API | Render, from the database |
+| `SECRET_KEY_BASE` | API | Render, generated once |
+| `JWT_SECRET_KEY` | API | Render, generated once (changing it logs every player out) |
+| `APP_HOST` | API | Render, the API's own address (only requests to it are accepted) |
+| `FRONTEND_ORIGIN` | API | You (comma-separated if there are several) |
+| `SOLID_QUEUE_IN_PUMA` | API | `render.yaml` (background jobs run inside the web process) |
+| `VITE_API_URL` | Frontend | You, built into the JavaScript |
+
+Without `DATABASE_URL`, `JWT_SECRET_KEY`, `APP_HOST` or `FRONTEND_ORIGIN`, the API refuses to start in production with a message naming the missing variable.
+
+### Next deployments
+
+Every merge into `main` deploys again, each part only when its folder changes. Before the new version of the API starts, `bin/rails db:prepare` applies the new migrations; if it fails, the previous version stays online.
 
 ## Development
 
