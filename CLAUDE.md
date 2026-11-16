@@ -37,9 +37,10 @@ npm install
 npm run dev      # Vite dev server on http://localhost:5173
 npm run build
 npm run lint     # ESLint
+npm test         # Vitest, once (npm run test:watch to rerun on save)
 ```
 
-The frontend has no test setup.
+Frontend tests (Vitest) cover the pure game logic in `src/game/` (`*.test.js` next to each module, builders in `testHelpers.js`); components are not tested yet.
 
 ## Architecture
 
@@ -83,6 +84,7 @@ The frontend has no test setup.
 
 ### Frontend structure
 - `src/pages/`: one component per route. `src/components/`: reusable components (`Card`, `PlayerGrid`, `TableLayout` for the green table and the seats around it (a 3 x 3 grid with the current player at the bottom center and 7 places around, one player per place; `USED_SEATS` gives the places used for 2 to 8 players, filled clockwise in turn order; the middle column is always 420 px and the table is as wide as its content), `RoomCode` shown in its middle in the lobby, `TableCenter` for the piles in its middle during the game, `InfoButton` in its bottom right corner during the game, whose bubble shows the game message (what to do, whose turn) with a yellow dot when the message changes, `GameTable`). The table keeps the same size when the game starts: the room code fades out, the piles fade in, then the cards are dealt.
+- `src/game/`: pure game logic, without React or the DOM, tested with Vitest: `seating.js` (where the opponents sit), `tableChanges.js` (removed columns and departed players between two refreshes), `tableMessage.js` (the info bubble message), `deal.js` (the order of the deal).
 - `src/hooks/`: custom hooks. `useDealAnimation` plays the ~10 s deal animation (cards fly from the draw pile with the Web Animations API, then the first discard card flips) when a page sees the game go from `pending` to `in_progress`. It is skipped with `prefers-reduced-motion`.
 - `useCardDrag` is a home-made drag and drop with Pointer Events (mouse, touch, pen; no library): a copy of the card follows the pointer, the target is found with `elementFromPoint` and `data-card-id`. During a turn, the card in hand sits on the pile it was taken from and is dragged onto a grid card to swap it; clicking a face-down grid card discards a card drawn from the draw pile and reveals it; before drawing, the discard pile card can be dragged straight onto the grid (draw then swap).
 - Leaving: "Leave the table" in `GameRoom` opens `components/LeaveGameDialog.jsx` (lobby: leave; game in progress: "Pause the game" goes home and keeps the seat, "Quit the game" forfeits after a confirmation step); a finished game shows a "Game over" screen on the table and is left directly. `GameTable` announces players who left in the info bubble. The home page lists the user's games (`GET /api/v1/games`) with a button to open or resume each one.

@@ -9,78 +9,15 @@ import PlayerGrid from './PlayerGrid';
 import RoomCode from './RoomCode';
 import TableCenter from './TableCenter';
 import TableLayout from './TableLayout';
-
-// Must match Game::INITIAL_REVEAL_COUNT in the backend
-const INITIAL_REVEAL_COUNT = 2;
-
-const faceUpCount = player => player.grid.filter(card => card.face_up).length;
+import { findDepartedPlayers, findRemovedColumns, ghostCards, GRID_ROWS } from '../game/tableChanges';
+import { faceUpCount, INITIAL_REVEAL_COUNT, tableMessage } from '../game/tableMessage';
 
 // Timings of the removed column animation
 const REMOVED_CARD_FLIGHT_MS = 450;
 const REMOVED_CARD_GAP_MS = 150;
-const GRID_ROWS = 3;
 
 const nextFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-// The most frequent face-up value of a list of cards (the value of a column about to be removed)
-function mostFrequentValue(cards) {
-  const counts = new Map();
-  cards.filter(card => card.face_up).forEach(card => counts.set(card.value, (counts.get(card.value) ?? 0) + 1));
-  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-}
-
-// The columns that were in a grid at the previous refresh and are gone now
-function findRemovedColumns(previousPlayers, players, discardTop) {
-  const removals = [];
-  players.forEach(player => {
-    const before = previousPlayers.find(previous => previous.id === player.id);
-    if (!before || before.grid.length === 0 || player.grid.length === 0) return;
-
-    const columnsNow = new Set(player.grid.map(card => card.column));
-    const columnsBefore = [...new Set(before.grid.map(card => card.column))];
-    columnsBefore.filter(column => !columnsNow.has(column)).forEach(column => {
-      const value = mostFrequentValue(before.grid.filter(card => card.column === column)) ?? discardTop?.value;
-      removals.push({ playerId: player.id, column, value, username: player.username, isMe: player.current_user });
-    });
-  });
-  return removals;
-}
-
-// The 3 cards of a removed column, shown in the grid while they fly to the discard pile
-const ghostCards = removal => Array.from({ length: GRID_ROWS }, (_, row) => ({
-  id: `removed-${removal.playerId}-${removal.column}-${row}`,
-  row,
-  column: removal.column,
-  face_up: true,
-  value: removal.value,
-}));
-
-// Message shown in the info bubble (see InfoButton)
-function tableMessage(state) {
-  const message = turnMessage(state);
-  return state.notice ? `${state.notice} ${message}` : message;
-}
-
-function turnMessage({ me, players, initialReveal, currentPlayerId, dealing, hand }) {
-  if (dealing) return 'Dealing the cards...';
-
-  if (initialReveal) {
-    const left = INITIAL_REVEAL_COUNT - faceUpCount(me);
-    if (left > 0) return `Reveal ${left} card${left > 1 ? 's' : ''} of your grid.`;
-    return 'Waiting for the other players to reveal their cards...';
-  }
-
-  const playing = players.find(player => player.id === currentPlayerId);
-  if (!playing) return '';
-  if (!playing.current_user) return `It's ${playing.username}'s turn.`;
-
-  if (!hand) return 'Your turn: draw a card from the draw pile, or take the discard pile card.';
-  if (hand.drawn_from === 'draw_pile') {
-    return 'Drag the card onto your grid to swap it, or click a hidden card to throw it and reveal that card.';
-  }
-  return 'Drag the card onto your grid to swap it.';
-}
 
 // deal (from buildDeal) plays the deal animation; onDealEnd is called once it is over.
 // hand is the card the current player has drawn (or null); busy is true while an action is being sent.
@@ -182,7 +119,7 @@ export default function GameTable({
     setPreviousPlayers(players);
     const found = dealing ? [] : findRemovedColumns(previousPlayers, players, discardTop);
     // Players who quit the game since the previous refresh
-    const departed = previousPlayers.filter(previous => !players.some(player => player.id === previous.id));
+    const departed = findDepartedPlayers(previousPlayers, players);
     if (departed.length > 0) {
       const names = departed.map(player => player.username).join(' and ');
       setNotice({ text: `${names} left the game.`, currentPlayerId });

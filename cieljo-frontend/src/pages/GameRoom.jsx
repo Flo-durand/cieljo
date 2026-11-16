@@ -6,7 +6,7 @@ import LeaveGameDialog from '../components/LeaveGameDialog';
 import PlayerGrid from '../components/PlayerGrid';
 import RoomCode from '../components/RoomCode';
 import TableLayout from '../components/TableLayout';
-import { buildDeal } from '../hooks/useDealAnimation';
+import { buildDeal } from '../game/deal';
 import prefersReducedMotion from '../utils/prefersReducedMotion';
 import './GameRoom.scss';
 
