@@ -14,6 +14,8 @@ import usePageVisible from '../hooks/usePageVisible';
 import prefersReducedMotion from '../utils/prefersReducedMotion';
 import './GameRoom.scss';
 
+const nextFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
+
 // How often the player list is refreshed (until real-time updates with ActionCable)
 const REFRESH_INTERVAL_MS = 3000;
 
@@ -42,7 +44,9 @@ export default function GameRoom() {
   // The animations only play in front of the player (see src/game/animations.js); the table reads it from
   // AnimationsContext, and loadGame from animationsAllowedRef (it runs outside the render)
   const pageVisible = usePageVisible();
-  const allowAnimations = animationsAllowed({ pageVisible, catchingUp: false, reducedMotion: prefersReducedMotion() });
+  // True while the game catches up with what happened while the tab was hidden: it shows the final state at once
+  const [catchingUp, setCatchingUp] = useState(false);
+  const allowAnimations = animationsAllowed({ pageVisible, catchingUp, reducedMotion: prefersReducedMotion() });
   const animationsAllowedRef = useRef(allowAnimations);
   useEffect(() => {
     animationsAllowedRef.current = allowAnimations;
@@ -58,7 +62,9 @@ export default function GameRoom() {
   // game as it was before the action (see postAction)
   const firstValidLoadRef = useRef(0);
 
-  const loadGame = useCallback(async () => {
+  // catchUp: the load that follows the return to the tab, shown without animations
+  const loadGame = useCallback(async ({ catchUp = false } = {}) => {
+    if (catchUp) setCatchingUp(true);
     loadCountRef.current += 1;
     const loadNumber = loadCountRef.current;
     // False when a newer load is already on screen: this answer is outdated
@@ -75,7 +81,8 @@ export default function GameRoom() {
 
       if (response.ok) {
         // Only animate a start seen live: reopening a started game shows the cards right away
-        if (lastStatusRef.current === 'pending' && data.data.status === 'in_progress' && animationsAllowedRef.current) {
+        const startSeenLive = lastStatusRef.current === 'pending' && data.data.status === 'in_progress';
+        if (startSeenLive && animationsAllowedRef.current && !catchUp) {
           setDeal(buildDeal(data.data.players, data.data.discard_top));
         }
         lastStatusRef.current = data.data.status;
@@ -95,6 +102,13 @@ export default function GameRoom() {
       }
     } catch (err) {
       if (isLatest()) setError(`Could not reach the backend server. Details: ${err.message || err}`);
+    } finally {
+      if (catchUp) {
+        // Let React show the caught-up game without animations, then allow them again for what comes next
+        await nextFrame();
+        await nextFrame();
+        setCatchingUp(false);
+      }
     }
   }, [room_code]);
 
@@ -103,16 +117,17 @@ export default function GameRoom() {
   useEffect(() => {
     let intervalId = null;
 
-    const startRefreshing = () => {
+    // catchUp: back on the tab, the first load shows what happened meanwhile without animations
+    const startRefreshing = ({ catchUp = false } = {}) => {
       if (intervalId) return;
-      loadGame();
-      intervalId = setInterval(loadGame, REFRESH_INTERVAL_MS);
+      loadGame({ catchUp });
+      intervalId = setInterval(() => loadGame(), REFRESH_INTERVAL_MS);
     };
     const stopRefreshing = () => {
       clearInterval(intervalId);
       intervalId = null;
     };
-    const onVisibilityChange = () => (document.hidden ? stopRefreshing() : startRefreshing());
+    const onVisibilityChange = () => (document.hidden ? stopRefreshing() : startRefreshing({ catchUp: true }));
 
     if (!document.hidden) startRefreshing();
     document.addEventListener('visibilitychange', onVisibilityChange);
