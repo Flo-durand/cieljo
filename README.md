@@ -67,6 +67,8 @@ Games nobody has played for 24 hours are deleted automatically.
 
 The game room refreshes every 3 seconds while its tab is visible, so the other players see your actions with a short delay. A hidden tab stops refreshing and catches up as soon as you come back to it.
 
+Animations (the deal, the flying cards, the flips) only play while you are looking: what happened while the tab was hidden shows in its final state when you come back, and leaving the tab ends a running animation at once. They are also turned off when your system asks to reduce motion.
+
 Sessions last 24 hours. When a session has expired, or after logging out (which logs you out on all your devices), the app sends you to the login page and brings you back to the page you were on, such as a game room opened from a link.
 
 The table follows the size of your window: on a computer or a tablet in landscape, it grows or shrinks to fit the screen (phones in portrait are not supported yet).
