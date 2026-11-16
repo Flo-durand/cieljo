@@ -524,4 +524,40 @@ class Api::V1::GamesControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ 5, 5, 5 ], recent.last(3).map { |card| card["value"] }
     assert_equal replaced.value, recent[1]["value"], "a discarded card is face up, so its value is sent"
   end
+  # --- Leaving a game ---
+
+  def leave_game(user, room_code = "ABCD")
+    post leave_api_v1_game_url(room_code), headers: auth_headers(user), as: :json
+  end
+
+  test "a player leaves the lobby" do
+    game = games(:one)
+    join("ABCD", users(:two))
+
+    leave_game(users(:two))
+
+    assert_response :ok
+    assert_equal false, response.parsed_body.dig("data", "game_deleted")
+    assert_not game.players.exists?(user: users(:two))
+  end
+
+  test "the last player leaving the lobby deletes it" do
+    leave_game(users(:one))
+
+    assert_response :ok
+    assert_equal true, response.parsed_body.dig("data", "game_deleted")
+    assert_not Game.exists?(room_code: "ABCD")
+  end
+
+  test "only the players of a game can leave it" do
+    leave_game(users(:two))
+
+    assert_response :forbidden
+  end
+
+  test "leaving an unknown room answers 404" do
+    leave_game(users(:one), "ZZZZ")
+
+    assert_response :not_found
+  end
 end

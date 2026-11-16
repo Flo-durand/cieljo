@@ -5,8 +5,8 @@ class Api::V1::GamesController < ApplicationController
   # Each new game inserts 150 cards: 10 new games per minute for a user (runs after authenticate_user!)
   rate_limit to: 10, within: 1.minute, only: :create, by: -> { current_user.id }, with: -> { render_rate_limited }
 
-  before_action :set_game, only: %i[show start reveal draw swap discard]
-  before_action :set_current_player, only: %i[show reveal draw swap discard]
+  before_action :set_game, only: %i[show start leave reveal draw swap discard]
+  before_action :set_current_player, only: %i[show leave reveal draw swap discard]
 
   def show
     players = @game.players.includes(:user).order(:turn_order)
@@ -134,6 +134,18 @@ class Api::V1::GamesController < ApplicationController
       }
     }, status: :ok
   rescue GameStarterService::Error => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  # POST /api/v1/games/:room_code/leave
+  def leave
+    deleted = LeaveGameService.new(@game, @player).call
+
+    render json: {
+      status: { code: 200, message: "You left the game." },
+      data: { room_code: @game.room_code, game_deleted: deleted }
+    }, status: :ok
+  rescue LeaveGameService::Error => e
     render json: { error: e.message }, status: :unprocessable_entity
   end
 
