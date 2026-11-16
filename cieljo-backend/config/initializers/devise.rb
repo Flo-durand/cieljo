@@ -316,7 +316,12 @@ Devise.setup do |config|
 
   # devise-jwt configuration
   config.jwt do |jwt|
-    jwt.secret = ENV["JWT_SECRET_KEY"] || Rails.application.credentials.jwt_secret_key
+    # The secret that signs the login tokens: JWT_SECRET_KEY, or jwt_secret_key in the credentials.
+    # In production it is required: without it the app refuses to start instead of signing tokens badly.
+    jwt.secret = ENV["JWT_SECRET_KEY"].presence || Rails.application.credentials.jwt_secret_key
+    if jwt.secret.blank? && Rails.env.production?
+      raise "JWT_SECRET_KEY must be set in production (the secret that signs the login tokens)"
+    end
 
     # No dispatch or revocation paths for devise-jwt's middleware: our own controllers create, check and revoke
     # the tokens (see config/initializers/devise_jwt_requests.rb, which also clears the paths devise-jwt adds)
