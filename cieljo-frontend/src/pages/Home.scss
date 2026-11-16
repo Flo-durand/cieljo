@@ -107,6 +107,11 @@
     margin-top: 20px;
   }
 
+  // The placeholder shows what to type; the label is for screen readers
+  &__join-label {
+    @include visually-hidden;
+  }
+
   &__join-input {
     width: 160px;
     padding: 8px;

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { API_URL, jsonHeaders } from '../api';
 import './Auth.scss';
@@ -19,6 +19,12 @@ export default function Auth() {
   const [isLoginMode, setIsLoginMode] = useState(true);
 
   const navigate = useNavigate();
+  const fieldId = useId();
+
+  const switchMode = loginMode => {
+    setIsLoginMode(loginMode);
+    setMessage('');
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -75,28 +81,44 @@ export default function Auth() {
 
       <h2>{isLoginMode ? "Log in" : "Create an account"}</h2>
 
-      {message && <p className="auth__message">{message}</p>}
+      {/* role="alert": screen readers read the message as soon as it shows */}
+      {message && <p className="auth__message" role="alert">{message}</p>}
 
-      {isLoginMode ? (
-        <form onSubmit={handleLogin}>
-          <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required className="auth__input" /><br/>
-          <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className="auth__input" /><br/>
-          <button type="submit" className="btn btn--success auth__submit">Log in</button>
-          <p className="auth__switch">
-            New to Cieljo? <span onClick={() => { setIsLoginMode(false); setMessage(''); }} className="auth__switch-link">Create an account here</span>
-          </p>
-        </form>
-      ) : (
-        <form onSubmit={handleRegister}>
-          <input type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} required className="auth__input" /><br/>
-          <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required className="auth__input" /><br/>
-          <input type="password" placeholder="Password (at least 8 characters)" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} className="auth__input" /><br/>
-          <button type="submit" className="btn btn--primary auth__submit">Sign up</button>
-          <p className="auth__switch">
-            Already have an account? <span onClick={() => { setIsLoginMode(true); setMessage(''); }} className="auth__switch-link">Log in here</span>
-          </p>
-        </form>
-      )}
+      <form onSubmit={isLoginMode ? handleLogin : handleRegister}>
+        {!isLoginMode && (
+          <>
+            <label htmlFor={`${fieldId}-username`} className="auth__label">Username</label>
+            <input
+              id={`${fieldId}-username`} type="text" autoComplete="username"
+              value={username} onChange={e => setUsername(e.target.value)} required className="auth__input"
+            />
+          </>
+        )}
+        <label htmlFor={`${fieldId}-email`} className="auth__label">Email</label>
+        <input
+          id={`${fieldId}-email`} type="email" autoComplete="email"
+          value={email} onChange={e => setEmail(e.target.value)} required className="auth__input"
+        />
+        <label htmlFor={`${fieldId}-password`} className="auth__label">Password</label>
+        <input
+          id={`${fieldId}-password`} type="password"
+          autoComplete={isLoginMode ? 'current-password' : 'new-password'}
+          minLength={isLoginMode ? undefined : 8}
+          aria-describedby={isLoginMode ? undefined : `${fieldId}-password-hint`}
+          value={password} onChange={e => setPassword(e.target.value)} required className="auth__input"
+        />
+        {!isLoginMode && <p id={`${fieldId}-password-hint`} className="auth__hint">At least 8 characters.</p>}
+        <button type="submit" className={`btn ${isLoginMode ? 'btn--success' : 'btn--primary'} auth__submit`}>
+          {isLoginMode ? 'Log in' : 'Sign up'}
+        </button>
+      </form>
+
+      <p className="auth__switch">
+        {isLoginMode ? 'New to Cieljo? ' : 'Already have an account? '}
+        <button type="button" onClick={() => switchMode(!isLoginMode)} className="auth__switch-link">
+          {isLoginMode ? 'Create an account here' : 'Log in here'}
+        </button>
+      </p>
     </div>
   );
 }
