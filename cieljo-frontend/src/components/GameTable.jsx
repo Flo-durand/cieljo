@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useAnimationsAllowed } from '../contexts/AnimationsContext';
 import useCardDrag from '../hooks/useCardDrag';
 import useDealAnimation from '../hooks/useDealAnimation';
 import useTableChanges from '../hooks/useTableChanges';
@@ -7,6 +8,7 @@ import Card from './Card';
 import InfoButton from './InfoButton';
 import PlayerGrid from './PlayerGrid';
 import RoomCode from './RoomCode';
+import RoundScores from './RoundScores';
 import TableCenter from './TableCenter';
 import TableLayout from './TableLayout';
 import { cardLabel, discardPileLabel, drawPileLabel } from '../game/cardLabel';
@@ -19,9 +21,12 @@ import { faceUpCount, tableMessage } from '../game/tableMessage';
 // discardRecent lists the last discarded cards, oldest first: a removed column shows them landing one by one.
 // A swap is played by dragging the card in hand (or the discard pile card) onto the grid, or by clicks, which also
 // works with the keyboard: click the card in hand to select it, then the grid card to replace.
+// lastRound is true once a player (roundEnderId) has revealed all their cards. Once the round is scored
+// (roundScored), the scores replace the piles; onBack goes back to the home page.
 export default function GameTable({
   roomCode, rules, players, drawPileCount, discardTop, discardRecent = [], hand, initialReveal, currentPlayerId, busy,
-  onRevealCard, onDraw, onSwap, onDiscard, onTakeAndSwap, deal, onDealEnd,
+  lastRound = false, roundEnderId = null, roundScored = false,
+  onRevealCard, onDraw, onSwap, onDiscard, onTakeAndSwap, onBack, deal, onDealEnd,
 }) {
   const me = players.find(player => player.current_user);
 
@@ -65,6 +70,13 @@ export default function GameTable({
   const { notice, discardHidden, flownCardIds, extraCardsOf } = useTableChanges({
     players, discardTop, currentPlayerId, dealing, discardRef, leavingCardId, gridRows: rules.gridRows,
   });
+
+  // --- End of the round: the scores show once the last moves have landed (a removed column, a thrown card) ---
+  // They fade in only when the player sees them appear (see AnimationsContext).
+  const animationsAllowed = useAnimationsAllowed();
+  const tableIdle = discardHidden === 0 && flownCardIds.length === 0 && !leavingCardId;
+  const [scoresShown, setScoresShown] = useState(null); // null, 'animated' or 'instant'
+  if (roundScored && tableIdle && !scoresShown) setScoresShown(animationsAllowed ? 'animated' : 'instant');
 
   // The card that can be dragged onto the grid: the card in hand, or the discard pile card before drawing
   const canDrag = !busy && (Boolean(myHand) || (canDraw && Boolean(discardTop)));
@@ -200,7 +212,7 @@ export default function GameTable({
         <InfoButton
           message={tableMessage({
             me, players, initialReveal, initialRevealCount: rules.initialRevealCount, currentPlayerId, dealing,
-            hand: myHand, handSelected, notice,
+            hand: myHand, handSelected, notice, lastRound, roundEnderId, roundScored,
           })}
         />
       )}
@@ -215,7 +227,12 @@ export default function GameTable({
         pileRef={pileRef}
         discardRef={discardRef}
         entering={dealing}
+        leaving={scoresShown}
       />
+
+      {scoresShown && (
+        <RoundScores players={players} onBack={onBack} busy={busy} entering={scoresShown === 'animated'} />
+      )}
 
       {/* The room code shown in the lobby fades out as the piles fade in */}
       {dealing && <RoomCode code={roomCode} lines={['The game is starting!', '', '']} className="room-code--leaving" />}

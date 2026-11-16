@@ -1,12 +1,17 @@
+import { lastRoundText, winnersText } from './roundScores';
+
 // The message shown in the info bubble of the game table (see InfoButton): what to do, or whose turn it is.
 
 export const faceUpCount = player => player.grid.filter(card => card.face_up).length;
 
-// The message for the current state of the table. notice ("player_one removed a column of 5s!") comes first.
-// initialRevealCount is the number of cards each player reveals at the start (from the rules of the API).
+// The message for the current state of the table. notice ("player_one removed a column of 5s!") comes first,
+// then the reminder of the last round. initialRevealCount is the number of cards each player reveals at the
+// start (from the rules of the API). Once the round is scored, the message gives the winners.
 export function tableMessage(state) {
-  const message = turnMessage(state);
-  return state.notice ? `${state.notice} ${message}` : message;
+  const parts = state.roundScored
+    ? [state.notice, `The round is over: ${winnersText(state.players)}`]
+    : [state.notice, lastRoundText(state), turnMessage(state)];
+  return parts.filter(Boolean).join(' ');
 }
 
 // handSelected is true when the player has clicked the card in hand, to swap it by clicks (see GameTable.jsx).

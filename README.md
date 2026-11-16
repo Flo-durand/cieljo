@@ -2,7 +2,7 @@
 
 Cieljo is a multiplayer online card game in the style of **Skyjo**. Players create or join a game room with a 4-character code and play against each other in their browser.
 
-> 🚧 Work in progress: accounts, game rooms, the deal, the reveal of the first cards, the turns and the removal of columns work. The end of the round and the scoring are still being built.
+> 🚧 Work in progress: accounts, game rooms, the deal, the reveal of the first cards, the turns, the removal of columns and the end of the round with its scores work. A game has a single round for now: playing several rounds up to 100 points comes next.
 
 ## Tech stack
 
@@ -60,8 +60,9 @@ By default the frontend calls the API at `http://localhost:3000/api/v1`, and the
 
    The replaced card goes face up onto the discard pile, then the turn passes to the next player. The drag and drop works with a mouse, a finger or a pen, and the whole game can be played with the keyboard (Tab, then Enter) or a screen reader, which names every card.
 7. When a column of your grid holds **3 face-up cards of the same value**, it is removed: its cards fly to the discard pile and the remaining columns close up.
-8. Click the **"i" button** in the bottom right corner of the table to see what to do and whose turn it is. A yellow dot appears on it when the message changes. The name of the player whose turn it is is highlighted in yellow.
-9. To leave, click **Leave the table**. In the lobby you simply leave (you can join again with the code). During a game you can **pause it** (your seat waits for you) or **quit it for good** (you forfeit: your cards leave the game and the others go on). When only one player is left, they win. Find your paused games with the **My games** button on the home page.
+8. When a player has revealed **all the cards left in their grid**, the last round begins: every other player plays one more turn. Then all the cards are revealed and each player scores the total of their grid (removed columns no longer count). If the player who ended the round does not have the lowest score (a tie is not enough), their points are doubled when positive. The scores show in the middle of the table: the lowest score wins.
+9. Click the **"i" button** in the bottom right corner of the table to see what to do and whose turn it is. A yellow dot appears on it when the message changes. The name of the player whose turn it is is highlighted in yellow.
+10. To leave, click **Leave the table**. In the lobby you simply leave (you can join again with the code). During a game you can **pause it** (your seat waits for you) or **quit it for good** (you forfeit: your cards leave the game and the others go on). When only one player is left, they win. After the scores, going back home keeps the game on screen for the others. Find your paused games with the **My games** button on the home page.
 
 Games nobody has played for 24 hours are deleted automatically.
 
@@ -134,7 +135,8 @@ Each component's `.scss` file sits next to its `.jsx` file.
 - **Reveal phase**: after the deal, the game is `in_progress` without a `current_player` until every player has revealed 2 cards. The player with the highest total then becomes the current player (on a tie, the first in turn order).
 - **Turns**: the current player draws a card (`games.drawn_from` remembers whether it comes from the draw pile or the discard pile), then swaps it or, for a draw pile card, discards it and reveals a grid card. The turn then goes to the next player in turn order. When the draw pile is empty, it is refilled with the discard pile except its top card.
 - **Column removal**: after a move, a column of 3 face-up cards of the same value goes onto the discard pile; the other cards keep their row and column, and the grid closes up on screen.
-- **Leaving**: in the lobby the player is removed and the seats are renumbered; an empty lobby is deleted. In a game in progress the player forfeits: their cards leave the game, a card in their hand goes onto the discard pile, the turn passes on if it was theirs, and with one player left the game is `finished` (that player wins).
+- **End of the round**: the first player with no face-down card left in their grid ends the round (`games.round_ender_turn_order` keeps their seat); each other player plays once more, then every card is revealed, the round points are added to `players.score` and the game is `finished`. The points of the player who ended the round are doubled when positive and another player has a lower or equal score.
+- **Leaving**: in the lobby the player is removed and the seats are renumbered; an empty lobby is deleted. In a game in progress the player forfeits: their cards leave the game, a card in their hand goes onto the discard pile, the turn passes on if it was theirs (or the round ends, during the last round), and with one player left the game is `finished` (that player wins).
 - **Cleanup**: a job (Solid Queue, every hour in production) deletes the games where nothing changed for 24 hours.
 
 ## Deploying to Render
@@ -210,7 +212,8 @@ npm run build
 - [x] Game info bubble (what to do, whose turn)
 - [x] Leave, pause or forfeit a game, and automatic cleanup of inactive games
 - [x] Column removal (3 identical face-up cards), with its animation
-- [ ] End of round and scoring
+- [x] End of the round and scoring (one round per game)
+- [ ] Several rounds, until a player reaches 100 points
 - [x] Up to 8 players, seated around a table of fixed width
 - [x] A table that adapts to the size of the screen (computers and tablets)
 - [ ] A layout for phones in portrait

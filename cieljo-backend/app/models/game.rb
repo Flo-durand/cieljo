@@ -27,6 +27,38 @@ class Game < ApplicationRecord
     status == "in_progress" && current_player_id.nil?
   end
 
+  # The last round begins when a player has revealed all the cards left in their grid: every other player
+  # plays once more, then the round ends (see TurnService and RoundEndService)
+  def last_round?
+    status == "in_progress" && round_ender_turn_order.present?
+  end
+
+  # The round is over when the player who ended it is next to play, after everyone else played their last
+  # turn. The turn goes from the seat from_turn_order to the seat to_turn_order: it is over if it reaches or
+  # passes the seat of that player (passes it when that player has quit the game in the meantime).
+  def round_over_when_turn_passes?(from_turn_order, to_turn_order)
+    seat = round_ender_turn_order
+    return false unless seat
+
+    if from_turn_order < to_turn_order
+      seat > from_turn_order && seat <= to_turn_order
+    else
+      # The turn goes back around the table to the first seats
+      seat > from_turn_order || seat <= to_turn_order
+    end
+  end
+
+  # The player who ended the round, or nil (no last round yet, or that player has quit the game)
+  def round_ender
+    round_ender_turn_order && players.find_by(turn_order: round_ender_turn_order)
+  end
+
+  # A game is finished either at the end of the round, with scores, or because only one player is left after
+  # the others quit (see LeaveGameService), without scores
+  def round_scored?
+    status == "finished" && round_ender_turn_order.present?
+  end
+
   # Puts a card face up on top of the discard pile. The discard pile is ordered by updated_at: each card put on
   # it gets a later time than the previous top card, even when several cards are discarded at once (a removed
   # column), so its order is never ambiguous.

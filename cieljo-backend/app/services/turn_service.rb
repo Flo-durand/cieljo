@@ -6,6 +6,8 @@
 #        (only when the card comes from the draw pile).
 # After step 2, a column of the grid with 3 face-up cards of the same value is removed: its cards go onto the
 # discard pile (see removed_column). Then the turn goes to the next player in turn order.
+# The first player with no face-down card left in their grid starts the last round: each other player plays
+# once more, then the round ends (RoundEndService).
 class TurnService
   class Error < StandardError; end
 
@@ -117,10 +119,17 @@ class TurnService
     @removed_column = { player_id: @player.id, column: column, value: column_cards.first.value }
   end
 
+  # The first player to reveal all the cards left in their grid starts the last round. When the turn comes back
+  # to them, the round ends instead.
   def end_turn
+    if @game.round_ender_turn_order.nil? && cards("player_grid").where(player: @player, is_face_up: false).none?
+      @game.round_ender_turn_order = @player.turn_order
+    end
+
     players = @game.players.order(:turn_order).to_a
     next_player = players[(players.index(@player) + 1) % players.size]
     @game.update!(current_player: next_player, drawn_from: nil, turn_number: @game.turn_number + 1)
+    RoundEndService.new(@game).call if @game.round_over_when_turn_passes?(@player.turn_order, next_player.turn_order)
   end
 
   def cards(location)

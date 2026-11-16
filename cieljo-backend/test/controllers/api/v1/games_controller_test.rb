@@ -525,6 +525,38 @@ class Api::V1::GamesControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ 5, 5, 5 ], recent.last(3).map { |card| card["value"] }
     assert_equal replaced.value, recent[1]["value"], "a discarded card is face up, so its value is sent"
   end
+  # --- End of the round ---
+
+  test "the game details tell when the last round has begun" do
+    game = start_turns
+    assert_equal [ false, nil, false ], show_as(users(:two)).values_at("last_round", "round_ender_id", "round_scored")
+
+    grid_of(game, :one).where.not(row: 2, column: 3).update_all(is_face_up: true)
+    play(:draw, users(:one), source: "draw_pile")
+    play(:discard, users(:one), card_id: grid_of(game, :one).find_by(is_face_up: false).id)
+
+    data = show_as(users(:two))
+    assert data["last_round"]
+    assert_equal game.players.find_by(user: users(:one)).id, data["round_ender_id"]
+  end
+
+  test "once the round is scored, the game details give every card and the points of each player" do
+    game = start_turns
+    game.players.update_all(score: 0)
+    game.update!(round_ender_turn_order: 1)
+    grid_of(game, :one).update_all(value: 2)
+    grid_of(game, :two).update_all(value: 1)
+    RoundEndService.new(game).call
+
+    data = show_as(users(:two))
+    assert_equal "finished", data["status"]
+    assert data["round_scored"]
+    one, two = data["players"]
+    assert_equal [ 48, 48, true ], one.values_at("score", "round_points", "round_doubled")
+    assert_equal [ 12, 12, false ], two.values_at("score", "round_points", "round_doubled")
+    assert one["grid"].all? { |card| card["face_up"] && card["value"] == 2 }
+  end
+
   # --- Leaving a game ---
 
   def leave_game(user, room_code = "ABCD")

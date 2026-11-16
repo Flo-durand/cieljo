@@ -55,6 +55,18 @@ describe('tableMessage', () => {
     expect(tableMessage(table({ currentPlayerId: 2, notice: 'player_3 left the game.' })))
       .toBe("player_3 left the game. It's player_2's turn.");
   });
+
+  it('reminds that it is the last round, after the notice', () => {
+    expect(tableMessage(table({ currentPlayerId: 2, lastRound: true, roundEnderId: 1, notice: 'Column removed!' })))
+      .toBe("Column removed! Last round: you revealed all your cards. It's player_2's turn.");
+  });
+
+  it('gives the winners once the round is scored', () => {
+    const scored = players(2).map((player, index) => ({ ...player, score: [12, 3][index] }));
+
+    expect(tableMessage(table({ players: scored, currentPlayerId: null, lastRound: false, roundScored: true })))
+      .toBe('The round is over: player_2 wins!');
+  });
 });
 
 describe('faceUpCount', () => {

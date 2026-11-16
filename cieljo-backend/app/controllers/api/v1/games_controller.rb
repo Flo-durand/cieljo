@@ -33,6 +33,8 @@ class Api::V1::GamesController < ApplicationController
   def show
     players = @game.players.includes(:user).order(:turn_order)
     grids = @game.cards.where(location: "player_grid").order(:row, :column).group_by(&:player_id)
+    # The points of the round, once it is over (every card of the grids is then face up)
+    round_results = @game.round_scored? ? RoundScoring.new(@game).results.index_by { |result| result.player.id } : {}
 
     render json: {
       data: {
@@ -49,6 +51,12 @@ class Api::V1::GamesController < ApplicationController
         # True while the players reveal their first cards; the current player is then chosen
         initial_reveal: @game.initial_reveal_phase?,
         current_player_id: @game.current_player_id,
+        # True once a player has revealed all their cards: everyone else plays one last turn
+        last_round: @game.last_round?,
+        # The player who revealed all their cards first, or nil (no last round yet, or they quit)
+        round_ender_id: @game.round_ender&.id,
+        # True when the game ended with the round (with scores), false when the other players quit
+        round_scored: @game.round_scored?,
         players: players.map do |player|
           {
             id: player.id,
@@ -56,6 +64,10 @@ class Api::V1::GamesController < ApplicationController
             turn_order: player.turn_order,
             host: player.turn_order == 1,
             current_user: player.user_id == current_user.id,
+            score: player.score,
+            # Once the round is scored: its points (already in score) and whether they were doubled
+            round_points: round_results[player.id]&.points,
+            round_doubled: round_results[player.id]&.doubled,
             grid: (grids[player.id] || []).map { |card| card_json(card) }
           }
         end,
