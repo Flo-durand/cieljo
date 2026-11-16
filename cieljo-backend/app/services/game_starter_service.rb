@@ -20,26 +20,31 @@ class GameStarterService
       raise Error, "At least #{MIN_PLAYERS} players are needed to start the game." if players.size < MIN_PLAYERS
       raise Error, "At most #{Game::MAX_PLAYERS} players can play." if players.size > Game::MAX_PLAYERS
 
-      # The deck was shuffled before insertion, so the id order is the draw pile order
-      draw_pile = @game.cards.where(location: "draw_pile").order(:id).to_a
-      needed = players.size * GRID_ROWS * GRID_COLUMNS + 1
-      raise Error, "Not enough cards in the draw pile." if draw_pile.size < needed
-
-      players.each { |player| deal_grid(player, draw_pile) }
-      draw_pile.shift.update!(location: "discard_pile", is_face_up: true)
-
-      # No current player until everyone has revealed their first cards (see InitialRevealService)
-      @game.update!(status: "in_progress", current_player: nil)
+      self.class.deal(@game)
     end
   end
 
-  private
+  # Deals a grid of face-down cards to every player and flips the next draw pile card onto the discard pile, then
+  # sets the game in progress, with no current player until everyone has revealed their first cards (see
+  # InitialRevealService). Used at the start of every round (see NextRoundService), under the lock of the game row.
+  def self.deal(game)
+    players = game.players.order(:turn_order).to_a
+    # The deck was shuffled before insertion, so the id order is the draw pile order
+    draw_pile = game.cards.where(location: "draw_pile").order(:id).to_a
+    needed = players.size * GRID_ROWS * GRID_COLUMNS + 1
+    raise Error, "Not enough cards in the draw pile." if draw_pile.size < needed
 
-  def deal_grid(player, draw_pile)
+    players.each { |player| deal_grid(player, draw_pile) }
+    draw_pile.shift.update!(location: "discard_pile", is_face_up: true)
+    game.update!(status: "in_progress", current_player: nil, drawn_from: nil)
+  end
+
+  def self.deal_grid(player, draw_pile)
     GRID_ROWS.times do |row|
       GRID_COLUMNS.times do |column|
         draw_pile.shift.update!(location: "player_grid", player: player, row: row, column: column, is_face_up: false)
       end
     end
   end
+  private_class_method :deal_grid
 end

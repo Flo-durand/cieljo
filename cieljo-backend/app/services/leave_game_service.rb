@@ -7,6 +7,8 @@
 #   cards, the first player is chosen if all the others are done. During the last round, the round ends if the
 #   turn would go back to the player who ended it. With fewer than 2 players left, the game is finished and the
 #   last player wins.
+# - Between two rounds (round_over): the player is removed. The next round starts if all the others are ready;
+#   with fewer than 2 players left, the game is finished and the last player wins.
 # - In a finished game: the player is removed; a game left empty is deleted.
 class LeaveGameService
   class Error < StandardError; end
@@ -21,6 +23,7 @@ class LeaveGameService
     deleted = false
     @game.with_lock do
       next forfeit if @game.status == "in_progress"
+      next leave_between_rounds if @game.status == "round_over"
 
       @player.destroy!
       remaining = @game.players.order(:turn_order).to_a
@@ -56,6 +59,16 @@ class LeaveGameService
       @game.update!(current_player: next_player, drawn_from: nil)
     elsif @game.initial_reveal_phase?
       InitialRevealService.choose_first_player_if_everyone_revealed(@game)
+    end
+  end
+
+  def leave_between_rounds
+    @player.destroy!
+    if @game.players.count < GameStarterService::MIN_PLAYERS
+      # Like a forfeit: the game is not scored (see Game#round_scored?)
+      @game.update!(status: "finished", round_ender_turn_order: nil, round_ended_at: nil)
+    else
+      NextRoundService.start_if_ready(@game)
     end
   end
 

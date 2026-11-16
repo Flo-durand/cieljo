@@ -38,6 +38,8 @@ Rails.application.routes.draw do
         post :draw, on: :member
         post :swap, on: :member
         post :discard, on: :member
+        # POST /api/v1/games/:room_code/ready: between two rounds, the player is ready for the next one
+        post :ready, on: :member
       end
     end
   end

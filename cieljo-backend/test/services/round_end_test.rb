@@ -80,7 +80,7 @@ class RoundEndTest < ActiveSupport::TestCase
     play_turn(@p3)
 
     @game.reload
-    assert_equal "finished", @game.status
+    assert_equal "round_over", @game.status
     assert @game.round_scored?
     assert_nil @game.current_player
     assert_nil @game.drawn_from
@@ -97,7 +97,7 @@ class RoundEndTest < ActiveSupport::TestCase
 
     play_turn(@p1)
 
-    assert_equal "finished", @game.reload.status
+    assert_equal "round_over", @game.reload.status
   end
 
   test "another player revealing all their cards during the last round does not change who ended it" do
@@ -192,7 +192,7 @@ class RoundEndTest < ActiveSupport::TestCase
     play_turn(@p3)
 
     @game.reload
-    assert_equal "finished", @game.status
+    assert_equal "round_over", @game.status
     assert @game.round_scored?
     assert_nil @game.round_ender
     assert_equal [ 2, 3 ], results.keys
@@ -207,7 +207,7 @@ class RoundEndTest < ActiveSupport::TestCase
     LeaveGameService.new(@game, @p3).call
 
     @game.reload
-    assert_equal "finished", @game.status
+    assert_equal "round_over", @game.status
     assert @game.round_scored?
     assert_equal 10, @p1.reload.score
     assert_equal 20, @p2.reload.score
@@ -224,5 +224,35 @@ class RoundEndTest < ActiveSupport::TestCase
     assert_equal "finished", @game.status
     assert_not @game.round_scored?
     assert_equal 0, @p1.reload.score
+  end
+
+  # --- Several rounds ---
+
+  test "the points of the round are saved in the history of each player" do
+    finish_round(p1: 10, p2: 20, p3: 30)
+
+    assert_equal [ [ 1, 10, false ] ], @p1.round_results.map { |result| [ result.round_number, result.points, result.doubled ] }
+    assert_equal [ 30 ], @p3.round_results.map(&:points)
+  end
+
+  test "a round without a player at the end score is followed by another one" do
+    @p2.update!(score: 79)
+    freeze_time do
+      finish_round(p1: 10, p2: 20, p3: 30)
+
+      assert_equal "round_over", @game.status
+      assert_equal Time.current, @game.round_ended_at
+      assert_equal Time.current + Game::NEXT_ROUND_DELAY, @game.next_round_at
+    end
+  end
+
+  test "the round in which a player reaches the end score finishes the game" do
+    @p2.update!(score: 80)
+    finish_round(p1: 10, p2: 20, p3: 30)
+
+    assert_equal "finished", @game.status
+    assert @game.round_scored?
+    assert_nil @game.round_ended_at
+    assert_equal 100, @p2.reload.score
   end
 end
