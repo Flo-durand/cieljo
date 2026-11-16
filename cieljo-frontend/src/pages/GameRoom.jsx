@@ -46,6 +46,10 @@ export default function GameRoom() {
   const [hand, setHand] = useState(null);
   const [initialReveal, setInitialReveal] = useState(false);
   const [currentPlayerId, setCurrentPlayerId] = useState(null);
+  // The end of the round (see GameTable): the last round, who started it, and the scores once it is over
+  const [lastRound, setLastRound] = useState(false);
+  const [roundEnderId, setRoundEnderId] = useState(null);
+  const [roundScored, setRoundScored] = useState(false);
   const [error, setError] = useState('');
   // True while an action (start, reveal, turn) is being sent, to block double clicks
   const [isActing, setIsActing] = useState(false);
@@ -108,6 +112,9 @@ export default function GameRoom() {
         setHand(data.data.hand);
         setInitialReveal(data.data.initial_reveal);
         setCurrentPlayerId(data.data.current_player_id);
+        setLastRound(data.data.last_round);
+        setRoundEnderId(data.data.round_ender_id);
+        setRoundScored(data.data.round_scored);
         setError('');
       } else {
         setError(data.error || 'Could not load the game.');
@@ -229,8 +236,14 @@ export default function GameRoom() {
     }
   };
 
-  // A finished game is left right away; otherwise the dialog asks how to leave
-  const handleLeaveGame = () => (status === 'finished' ? leaveGame() : setLeaveDialogOpen(true));
+  // After a scored round, the player goes home but stays in the game, so the others still see every score; the
+  // game is deleted by the cleanup of inactive games. A game finished because the others quit is left right away.
+  // Otherwise the dialog asks how to leave.
+  const goHome = () => navigate('/');
+  const handleLeaveGame = () => {
+    if (status === 'finished') return roundScored ? goHome() : leaveGame();
+    return setLeaveDialogOpen(true);
+  };
 
   let waiting = 'Everyone is here? Start the game!';
   if (players.length < 2) waiting = 'Waiting for other players...';
@@ -268,7 +281,7 @@ export default function GameRoom() {
     </TableLayout>
   );
 
-  // A finished game: the players who quit are gone, the last one wins
+  // A game finished because the other players quit: the last one wins
   const me = players.find(player => player.current_user);
   const gameOver = (
     <TableLayout
@@ -293,7 +306,7 @@ export default function GameRoom() {
   let table = <p className="game-room__loading">Loading the game...</p>;
   if (rules && status === 'pending') {
     table = lobby;
-  } else if (rules && status === 'finished') {
+  } else if (rules && status === 'finished' && !roundScored) {
     table = gameOver;
   } else if (rules) {
     table = (
@@ -307,12 +320,16 @@ export default function GameRoom() {
         hand={hand}
         initialReveal={initialReveal}
         currentPlayerId={currentPlayerId}
+        lastRound={lastRound}
+        roundEnderId={roundEnderId}
+        roundScored={roundScored}
         busy={isActing}
         onRevealCard={handleRevealCard}
         onDraw={handleDraw}
         onSwap={handleSwap}
         onDiscard={handleDiscard}
         onTakeAndSwap={handleTakeAndSwap}
+        onBack={goHome}
         deal={deal}
         onDealEnd={handleDealEnd}
       />

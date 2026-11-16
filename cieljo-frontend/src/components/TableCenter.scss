@@ -11,6 +11,17 @@
     animation: table-center-fade-in 0.4s ease-out 0.4s both;
   }
 
+  // When the round is over, the piles fade out as the scores fade in (see RoundScores.scss)
+  &--leaving-animated {
+    pointer-events: none;
+    animation: table-center-fade-out 0.4s ease-in 0.6s forwards;
+  }
+
+  &--leaving-instant {
+    pointer-events: none;
+    opacity: 0;
+  }
+
   &__piles {
     display: flex;
     justify-content: center;
@@ -47,5 +58,11 @@
 
   to {
     opacity: 1;
+  }
+}
+
+@keyframes table-center-fade-out {
+  to {
+    opacity: 0;
   }
 }
