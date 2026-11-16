@@ -56,7 +56,9 @@ By default the frontend calls the API at `http://localhost:3000/api/v1`, and the
    - **click the draw pile**: the card flips face up on top of it. Then **drag it onto a card of your grid** to swap them, or **click a face-down card** of your grid to throw the drawn card onto the discard pile and reveal that card;
    - or **take the discard pile card** (click it, or drag it straight onto your grid) and drag it onto a card of your grid to swap them.
 
-   The replaced card goes face up onto the discard pile, then the turn passes to the next player. The drag and drop works with a mouse, a finger or a pen.
+   Instead of dragging, you can also swap with two clicks: click the card in your hand to select it (it stays raised), then click the card of your grid to replace. A discard pile card taken with a click is selected at once. Click the card in your hand again to cancel.
+
+   The replaced card goes face up onto the discard pile, then the turn passes to the next player. The drag and drop works with a mouse, a finger or a pen, and the whole game can be played with the keyboard (Tab, then Enter) or a screen reader, which names every card.
 7. When a column of your grid holds **3 face-up cards of the same value**, it is removed: its cards fly to the discard pile and the remaining columns close up.
 8. Click the **"i" button** in the bottom right corner of the table to see what to do and whose turn it is. A yellow dot appears on it when the message changes. The name of the player whose turn it is is highlighted in yellow.
 9. To leave, click **Leave the table**. In the lobby you simply leave (you can join again with the code). During a game you can **pause it** (your seat waits for you) or **quit it for good** (you forfeit: your cards leave the game and the others go on). When only one player is left, they win. Find your paused games with the **My games** button on the home page.
@@ -115,7 +117,7 @@ cieljo/
     ├── components/               # Card, PlayerGrid, TableLayout, TableCenter, RoomCode,
     │                             # InfoButton, LeaveGameDialog, GameTable
     ├── game/                     # pure game logic, tested with Vitest: seating, table changes,
-    │                             # info message, deal order, rules from the API
+    │                             # info message, deal order, rules from the API, card labels
     ├── hooks/                    # useDealAnimation, useCardDrag, useThrowToDiscard, useTableChanges
     ├── utils/                    # flyCard (cards flying over the table), prefersReducedMotion
     └── styles/                   # shared SCSS variables and mixins
@@ -204,6 +206,7 @@ npm run build
 - [x] Start the game and deal 12 cards to each player (3×4 grid), with a deal animation
 - [x] Reveal the first 2 cards and choose the first player
 - [x] Turns: draw, swap or discard, reveal cards, with drag and drop and card animations
+- [x] Accessibility: play with clicks or the keyboard, cards and forms named for screen readers
 - [x] Game info bubble (what to do, whose turn)
 - [x] Leave, pause or forfeit a game, and automatic cleanup of inactive games
 - [x] Column removal (3 identical face-up cards), with its animation
