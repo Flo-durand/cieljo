@@ -77,7 +77,7 @@ All routes are under `/api/v1`. Every endpoint except sign-up and login needs an
 
 | Method | Route | Description |
 | --- | --- | --- |
-| `POST` | `/users` | Sign up with `{ user: { email, password, username } }` (5 per hour per IP address) |
+| `POST` | `/users` | Sign up with `{ user: { email, password, username } }`; the password needs at least 8 characters (5 sign-ups per hour per IP address) |
 | `POST` | `/auth/login` | Log in with `{ user: { email, password } }`. Returns the token in `data.token`; 401 for wrong credentials, 400 without credentials (10 attempts per 3 minutes per IP address) |
 | `DELETE` | `/auth/logout` | Log out: revokes every token of the user, on all their devices |
 | `GET` | `/me` | The logged-in user (`id`, `email`, `username`) |
@@ -111,8 +111,10 @@ cieljo/
     ├── api.js                    # API_URL and request headers
     ├── pages/                    # Home, Auth, GameRoom
     ├── components/               # Card, PlayerGrid, TableLayout, TableCenter, RoomCode,
-    │                             # InfoButton, GameTable
-    ├── hooks/                    # useDealAnimation (deal animation), useCardDrag (drag and drop)
+    │                             # InfoButton, LeaveGameDialog, GameTable
+    ├── game/                     # pure game logic, tested with Vitest: seating, table changes,
+    │                             # info message, deal order, rules from the API
+    ├── hooks/                    # useDealAnimation, useCardDrag, useThrowToDiscard, useTableChanges
     ├── utils/                    # flyCard (cards flying over the table), prefersReducedMotion
     └── styles/                   # shared SCSS variables and mixins
 ```
@@ -187,6 +189,7 @@ bin/ci               # full CI: setup, rubocop, bundler-audit, brakeman, tests, 
 Frontend (from `cieljo-frontend/`):
 
 ```bash
+npm test             # Vitest (npm run test:watch to rerun on save)
 npm run lint
 npm run build
 ```
