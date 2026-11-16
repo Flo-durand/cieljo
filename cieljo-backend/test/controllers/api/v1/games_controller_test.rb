@@ -560,4 +560,14 @@ class Api::V1::GamesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_found
   end
+  test "forfeiting a game in progress finishes it when one player is left" do
+    start_turns
+
+    leave_game(users(:two))
+
+    assert_response :ok
+    data = show_as(users(:one))
+    assert_equal "finished", data["status"]
+    assert_equal [ "player_one" ], data["players"].map { |player| player["username"] }
+  end
 end

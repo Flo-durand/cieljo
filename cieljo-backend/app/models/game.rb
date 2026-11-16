@@ -27,7 +27,20 @@ class Game < ApplicationRecord
     status == "in_progress" && current_player_id.nil?
   end
 
+  # Puts a card face up on top of the discard pile. The discard pile is ordered by updated_at: each card put on
+  # it gets a later time than the previous top card, even when several cards are discarded at once (a removed
+  # column), so its order is never ambiguous.
+  def discard!(card)
+    card.update!(location: "discard_pile", player: nil, row: nil, column: nil, is_face_up: true, updated_at: next_discard_time)
+  end
+
   private
+
+  def next_discard_time
+    now = Time.current
+    latest = cards.where(location: "discard_pile").maximum(:updated_at)
+    latest && latest >= now ? latest + Rational(1, 1_000_000) : now
+  end
 
   def generate_room_code
     loop do
