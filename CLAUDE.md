@@ -11,6 +11,10 @@ Cieljo is a multiplayer online card game in the style of Skyjo. It is a monorepo
 
 All code, comments, API messages and UI text must be in English. The user communicates in French, so chat replies are in French.
 
+## Deployment
+
+The app is meant to run on Render, described by `render.yaml` at the repository root (a Blueprint: the API as a Ruby web service with `rootDir: cieljo-backend`, one PostgreSQL database, the frontend as a static site with `rootDir: cieljo-frontend` and a rewrite of every path to `/index.html` for React Router). `render.yaml` was validated against Render's JSON schema (https://render.com/schema/render.yaml.json). Production needs `DATABASE_URL`, `SECRET_KEY_BASE`, `JWT_SECRET_KEY`, `APP_HOST`, `FRONTEND_ORIGIN` (API) and `VITE_API_URL` (frontend build). To run the API in production mode on macOS, set `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES` (Solid Queue forks inside Puma; not needed on Linux).
+
 ## Commands
 
 Backend (run from `cieljo-backend/`):
@@ -40,8 +44,8 @@ The frontend has no test setup.
 ## Architecture
 
 ### Integration between frontend and backend
-- All API routes live under `/api/v1` (`config/routes.rb`). `src/api.js` exports `API_URL` (`http://localhost:3000/api/v1`), `jsonHeaders` for public requests and `authHeaders()`, which adds the `Authorization` header from `localStorage`. Every page uses them. There is no Vite proxy.
-- CORS (`config/initializers/cors.rb`) only allows `http://localhost:5173` and exposes the `Authorization` header.
+- All API routes live under `/api/v1` (`config/routes.rb`). `src/api.js` exports `API_URL` (`VITE_API_URL`, set when the frontend is built, see `cieljo-frontend/.env.example`; default `http://localhost:3000/api/v1`), `jsonHeaders` for public requests and `authHeaders()`, which adds the `Authorization` header from `localStorage`. Every page uses them. There is no Vite proxy.
+- CORS (`config/initializers/cors.rb`) allows the origins of `FRONTEND_ORIGIN` (comma-separated; default `http://localhost:5173` outside production, required in production), exposes the `Authorization` header and allows no credentials (no cookies).
 
 ### Authentication (custom JWT flow, not standard Devise)
 - **Sign-up**: `POST /api/v1/users` goes to `Api::V1::Users::RegistrationsController`. `sign_up` is overridden so it does not log the user in through the session.
@@ -51,12 +55,14 @@ The frontend has no test setup.
 - Devise routes: only sign-up is exposed (`devise_for :users, skip: %i[sessions passwords registrations]` + `devise_scope :api_v1_user { post "users" }` in `config/routes.rb`). Inside the `api/v1` namespace, Devise names the mapping `:api_v1_user`, while our tokens are encoded with the scope `:user`: our own flow (`AuthController#login` with `UserEncoder`, `authenticate_user!` with `TokenDecoder` + `jti`) does not depend on that name, but Devise's session routes cannot work with it, so they are skipped. devise-jwt adds default dispatch/revocation paths to its middleware from the mapping; `config/initializers/devise_jwt_requests.rb` clears them after boot, since our own controllers create, check and revoke the tokens (so `DELETE /api/v1/users/sign_out` is a plain 404 instead of crashing in the revocation middleware). Planned later: account edit/delete and "forgot password" as our own endpoints using `current_user`; the `User` model keeps all its Devise modules for that.
 - Rate limits (Rails 8 `rate_limit`, answered by `ApplicationController#render_rate_limited` with a 429 JSON error): login 10 per 3 minutes per IP, sign-up 5 per hour per IP, game creation 10 per minute per user. They count requests in `Rails.cache` (memory in development and test, Solid Cache in production); the test cache is cleared before each test.
 - Logout: `DELETE /api/v1/auth/logout` calls `User.revoke_jwt` (JTIMatcher): the user gets a new `jti`, so every token issued before is rejected. There is one `jti` per user, so it logs the user out of all their devices. `GET /api/v1/me` returns the logged-in user (`id`, `email`, `username`).
-- The JWT secret comes from `ENV['JWT_SECRET_KEY']` or `credentials.jwt_secret_key`. Tokens expire after 1 day.
+- The JWT secret comes from `ENV['JWT_SECRET_KEY']` (in development, from `cieljo-backend/.env`, git-ignored, loaded by dotenv-rails) or `credentials.jwt_secret_key`. In production the app refuses to start without it. Tokens expire after 1 day.
+- Production also requires `FRONTEND_ORIGIN` (CORS) and `APP_HOST` (host check), and forces HTTPS (`/up` excluded).
 - Frontend: the token and the username are stored in `localStorage` (`token`, `username`). The token is sent as-is in the `Authorization` header. Every authenticated request goes through `apiFetch` (`src/api.js`): on a 401 it clears the local session and opens `/auth?expired=1&next=<current page>`. Sign-up and login use a plain `fetch` (a wrong password must not redirect). The home page checks the stored session with `GET /api/v1/me` when it opens. `components/RequireAuth.jsx` protects `/game/:room_code` (no token → `/auth?next=...`); the login page goes back to `next` (paths of the site only). `logout()` in `api.js` calls `DELETE /api/v1/auth/logout`, then clears the local session even if the request fails.
 
 ### Game domain (`app/models`, `app/services`)
 - `Game` has many `Player`s (the join between `User` and `Game`, with `score` and `turn_order`), `Card`s and `Invitation`s. `Game#current_player` points to a `Player`. On create, `room_code` is generated automatically as a unique 4-character code. `status` is one of `pending | in_progress | finished`.
 - `Card`: `value`, `location` (string, for example `draw_pile`), `is_face_up`, and `row`/`column` for its position in a player's grid. `player_id` is null for draw pile and discard pile cards (`belongs_to :player, optional: true`). Locations in use: `draw_pile`, `player_grid`, `discard_pile`, `hand` (the card the current player has drawn, face up). The deal takes the draw pile in `id` order (the deck is shuffled before insertion); during the turns, `TurnService` draws a random draw pile card, so the pile stays shuffled after being refilled. The top of the discard pile is its most recently updated card; `TurnService#discard!` gives each discarded card a strictly later `updated_at` than the current top, so several cards discarded in one request keep their order.
+- Database: production uses a single PostgreSQL database from `DATABASE_URL`. Solid Cache (`Rails.cache`, used by the rate limits) and Solid Queue (background jobs, run inside Puma when `SOLID_QUEUE_IN_PUMA` is set) keep their tables in it, created by regular migrations in `db/migrate`. Action Cable is not used yet (`async` adapter in production; `db/cable_schema.rb` is kept for when real time is added).
 - `GameInitializerService` builds the 150-card Skyjo deck (-2×5, -1×15, 0..12×10), shuffles it, and inserts it with `insert_all!`, which skips model validations.
 - `POST /api/v1/games` creates the game, adds the current user as player 1, sets `current_player`, then runs the initializer.
 - The host is the player with `turn_order` 1. `POST /api/v1/games/join` adds a player to a `pending` game, under a row lock, up to `Game::MAX_PLAYERS` (8, the official Skyjo limit); `GameStarterService` also refuses more than 8. `GET /api/v1/games/:room_code` returns `max_players`.

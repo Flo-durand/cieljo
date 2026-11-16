@@ -1,0 +1,86 @@
+# Render Blueprint: describes how Cieljo is deployed on Render (https://render.com/docs/blueprint-spec).
+# Render reads this file to create and update the API, its PostgreSQL database and the frontend.
+# The deployment steps and the values to fill in are in the README ("Deploying to Render").
+#
+# Everything is in Frankfurt, close to the players; the region cannot be changed after creation.
+
+databases:
+  - name: cieljo-db
+    # About 6-7 $/month. The free plan deletes the database after 30 days.
+    plan: 0.1c-256mb
+    region: frankfurt
+    databaseName: cieljo
+    user: cieljo
+
+services:
+  # --- The Rails API ---
+  - type: web
+    name: cieljo-api
+    runtime: ruby
+    # About 7 $/month; always on (the free plan sleeps and cannot run the migrations before each deploy)
+    plan: starter
+    region: frankfurt
+    rootDir: cieljo-backend
+    # Only the backend folder triggers a new deploy of the API (paths are relative to the repository root)
+    buildFilter:
+      paths:
+        - cieljo-backend/**
+    buildCommand: bundle install
+    # Runs before each new version starts: an error stops the deploy and keeps the previous version online
+    preDeployCommand: bin/rails db:prepare
+    startCommand: bin/rails server
+    healthCheckPath: /up
+    autoDeployTrigger: commit
+    envVars:
+      - key: RAILS_ENV
+        value: production
+      # The single PostgreSQL database (see config/database.yml)
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cieljo-db
+          property: connectionString
+      # Signs the sessions of Rails: a random value generated once by Render
+      - key: SECRET_KEY_BASE
+        generateValue: true
+      # Signs the login tokens: a random value generated once by Render. Changing it logs everybody out.
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      # The address of the API itself, checked on every request (config/environments/production.rb)
+      - key: APP_HOST
+        fromService:
+          type: web
+          name: cieljo-api
+          envVarKey: RENDER_EXTERNAL_HOSTNAME
+      # The address of the frontend allowed to call the API (CORS), e.g. https://cieljo.onrender.com.
+      # Render asks for it when the Blueprint is created; it can be changed later in the dashboard.
+      - key: FRONTEND_ORIGIN
+        sync: false
+      # Runs the background jobs (Solid Queue) inside the web process: no separate worker to pay for
+      - key: SOLID_QUEUE_IN_PUMA
+        value: "true"
+
+  # --- The React frontend (static files built by Vite) ---
+  - type: web
+    name: cieljo
+    runtime: static
+    rootDir: cieljo-frontend
+    # Only the frontend folder triggers a new build of the site (paths are relative to the repository root)
+    buildFilter:
+      paths:
+        - cieljo-frontend/**
+    # Runs inside rootDir
+    buildCommand: npm ci && npm run build
+    # Relative to rootDir (Render's monorepo guide); check the publish step of the first build log
+    staticPublishPath: ./dist
+    autoDeployTrigger: commit
+    # React Router handles the pages (/auth, /game/ABCD) in the browser: every path serves index.html,
+    # so reloading a page or opening a shared link works. Existing files (the JS and CSS) are served first.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      # The address of the API, built into the JavaScript, e.g. https://cieljo-api.onrender.com/api/v1.
+      # Render asks for it when the Blueprint is created; changing it needs a new build.
+      - key: VITE_API_URL
+        sync: false

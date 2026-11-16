@@ -1,4 +1,6 @@
-export const API_URL = 'http://localhost:3000/api/v1';
+// The address of the API. VITE_API_URL is set when the frontend is built (e.g. on Render, or in a local .env file,
+// see .env.example); without it, the Rails dev server is used.
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
 // Headers for public requests (sign-up, login)
 export const jsonHeaders = {
