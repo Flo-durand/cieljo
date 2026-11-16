@@ -40,8 +40,8 @@ The frontend has no test setup.
 ## Architecture
 
 ### Integration between frontend and backend
-- All API routes live under `/api/v1` (`config/routes.rb`). `src/api.js` exports `API_URL` (`http://localhost:3000/api/v1`), `jsonHeaders` for public requests and `authHeaders()`, which adds the `Authorization` header from `localStorage`. Every page uses them. There is no Vite proxy.
-- CORS (`config/initializers/cors.rb`) only allows `http://localhost:5173` and exposes the `Authorization` header.
+- All API routes live under `/api/v1` (`config/routes.rb`). `src/api.js` exports `API_URL` (`VITE_API_URL`, set when the frontend is built, see `cieljo-frontend/.env.example`; default `http://localhost:3000/api/v1`), `jsonHeaders` for public requests and `authHeaders()`, which adds the `Authorization` header from `localStorage`. Every page uses them. There is no Vite proxy.
+- CORS (`config/initializers/cors.rb`) allows the origins of `FRONTEND_ORIGIN` (comma-separated; default `http://localhost:5173` outside production, required in production), exposes the `Authorization` header and allows no credentials (no cookies).
 
 ### Authentication (custom JWT flow, not standard Devise)
 - **Sign-up**: `POST /api/v1/users` goes to `Api::V1::Users::RegistrationsController`. `sign_up` is overridden so it does not log the user in through the session.
