@@ -16,6 +16,18 @@ import './GameRoom.scss';
 
 const nextFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
 
+// Ends at once every animation of the page (flying cards, flips, grids closing up, fades): each one jumps to its
+// final state, and the code waiting for its end goes on as usual
+function finishAllAnimations() {
+  document.getAnimations?.().forEach(animation => {
+    try {
+      animation.finish();
+    } catch {
+      // An animation without an end (none in this app) cannot be finished: leave it
+    }
+  });
+}
+
 // How often the player list is refreshed (until real-time updates with ActionCable)
 const REFRESH_INTERVAL_MS = 3000;
 
@@ -127,7 +139,16 @@ export default function GameRoom() {
       clearInterval(intervalId);
       intervalId = null;
     };
-    const onVisibilityChange = () => (document.hidden ? stopRefreshing() : startRefreshing({ catchUp: true }));
+    // Leaving the tab ends the animations at once (the deal included): they only play in front of the player
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        stopRefreshing();
+        finishAllAnimations();
+        setDeal(null);
+      } else {
+        startRefreshing({ catchUp: true });
+      }
+    };
 
     if (!document.hidden) startRefreshing();
     document.addEventListener('visibilitychange', onVisibilityChange);

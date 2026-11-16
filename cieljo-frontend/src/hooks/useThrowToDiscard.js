@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAnimationsAllowed } from '../contexts/AnimationsContext';
 import flyCard from '../utils/flyCard';
 
@@ -12,6 +12,11 @@ export default function useThrowToDiscard(discardRef) {
   // A thrown card that was face down: it flips over once on the discard pile
   const [flippedDiscardId, setFlippedDiscardId] = useState(null);
   const animationsAllowed = useAnimationsAllowed();
+  // Read when a flight ends, after the render that started it
+  const animationsAllowedRef = useRef(animationsAllowed);
+  useEffect(() => {
+    animationsAllowedRef.current = animationsAllowed;
+  }, [animationsAllowed]);
 
   // Plays a move that throws `card` onto the discard pile, then makes it fly there from `fromElement`.
   // The flight starts once the move is played, so a refused move never shows. A face-down card travels
@@ -36,7 +41,8 @@ export default function useThrowToDiscard(discardRef) {
       easing: 'ease-in-out',
     });
     finished.then(async () => {
-      if (!card.face_up) setFlippedDiscardId(card.id);
+      // A flight ended because the tab was left: the card shows face up at once, without a flip on return
+      if (!card.face_up && animationsAllowedRef.current) setFlippedDiscardId(card.id);
       setLeavingCardId(null);
       // Let React show the real card before removing the flying one, so nothing blinks
       await new Promise(requestAnimationFrame);
