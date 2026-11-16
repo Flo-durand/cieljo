@@ -11,6 +11,6 @@ development:
 test:
   <<: *default
 
+# Solid Cache uses the main database (see config/database.yml)
 production:
-  database: cache
   <<: *default

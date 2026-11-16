@@ -84,21 +84,9 @@ test:
 # Read https://guides.rubyonrails.org/configuring.html#configuring-a-database
 # for a full overview on how database connection configuration can be specified.
 #
+# Production uses a single PostgreSQL database, given by DATABASE_URL (Render provides it). Solid Cache and
+# Solid Queue keep their tables in it (see their migrations in db/migrate), instead of the separate databases
+# Rails 8 creates by default.
 production:
-  primary: &primary_production
-    <<: *default
-    database: cieljo_backend_production
-    username: cieljo_backend
-    password: <%= ENV["CIELJO_BACKEND_DATABASE_PASSWORD"] %>
-  cache:
-    <<: *primary_production
-    database: cieljo_backend_production_cache
-    migrations_paths: db/cache_migrate
-  queue:
-    <<: *primary_production
-    database: cieljo_backend_production_queue
-    migrations_paths: db/queue_migrate
-  cable:
-    <<: *primary_production
-    database: cieljo_backend_production_cable
-    migrations_paths: db/cable_migrate
+  <<: *default
+  url: <%= ENV["DATABASE_URL"] %>

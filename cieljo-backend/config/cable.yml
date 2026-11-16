@@ -8,10 +8,7 @@ development:
 test:
   adapter: test
 
+# Action Cable is not used yet (the game room polls the API). When real time is added, switch production to
+# solid_cable and add its tables to the main database with a migration copied from db/cable_schema.rb.
 production:
-  adapter: solid_cable
-  connects_to:
-    database:
-      writing: cable
-  polling_interval: 0.1.seconds
-  message_retention: 1.day
+  adapter: async
