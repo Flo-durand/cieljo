@@ -171,7 +171,8 @@ export default function GameTable({
   const [discardHidden, setDiscardHidden] = useState(0);
   // Cards of the removed column that have left the grid (their flying copy is on its way)
   const [flownCardIds, setFlownCardIds] = useState([]);
-  // "player_one removed a column of 5s!", shown in the info bubble until the turn passes again
+  // "player_one removed a column of 5s!" or "player_two left the game.", shown in the info bubble until the turn
+  // passes again
   const [notice, setNotice] = useState(null);
 
   // Compare the grids with the previous refresh to find the removed columns, for every player.
@@ -180,6 +181,12 @@ export default function GameTable({
   if (players !== previousPlayers) {
     setPreviousPlayers(players);
     const found = dealing ? [] : findRemovedColumns(previousPlayers, players, discardTop);
+    // Players who quit the game since the previous refresh
+    const departed = previousPlayers.filter(previous => !players.some(player => player.id === previous.id));
+    if (departed.length > 0) {
+      const names = departed.map(player => player.username).join(' and ');
+      setNotice({ text: `${names} left the game.`, currentPlayerId });
+    }
     if (found.length > 0) {
       const last = found[found.length - 1];
       setNotice({

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../api';
 import GameTable from '../components/GameTable';
+import LeaveGameDialog from '../components/LeaveGameDialog';
 import PlayerGrid from '../components/PlayerGrid';
 import RoomCode from '../components/RoomCode';
 import TableLayout from '../components/TableLayout';
@@ -154,10 +155,32 @@ export default function GameRoom() {
     return swapped;
   };
 
-  const handleLeaveGame = () => {
-    // Later, notify the Rails backend through the API or ActionCable
-    navigate('/');
+  // --- Leaving the table ---
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const closeLeaveDialog = useCallback(() => setLeaveDialogOpen(false), []);
+
+  // Leaves the lobby, forfeits the game in progress, or leaves a finished game, then goes back home
+  const leaveGame = async () => {
+    setIsActing(true);
+    try {
+      const response = await apiFetch(`/games/${room_code}/leave`, { method: 'POST' });
+      if (response.ok) {
+        navigate('/');
+        return;
+      }
+      const data = await response.json();
+      setError(data.error || 'Could not leave the game.');
+      setLeaveDialogOpen(false);
+    } catch (err) {
+      setError(`Could not reach the backend server. Details: ${err.message || err}`);
+      setLeaveDialogOpen(false);
+    } finally {
+      setIsActing(false);
+    }
   };
+
+  // A finished game is left right away; otherwise the dialog asks how to leave
+  const handleLeaveGame = () => (status === 'finished' ? leaveGame() : setLeaveDialogOpen(true));
 
   let waiting = 'Everyone is here? Start the game!';
   if (players.length < 2) waiting = 'Waiting for other players...';
@@ -192,6 +215,53 @@ export default function GameRoom() {
     </TableLayout>
   );
 
+  // A finished game: the players who quit are gone, the last one wins
+  const me = players.find(player => player.current_user);
+  const gameOver = (
+    <TableLayout
+      players={players}
+      renderPlayer={(player, { small }) => <PlayerGrid player={player} small={small} />}
+    >
+      <div className="game-room__game-over">
+        <h1 className="game-room__game-over-title">Game over</h1>
+        <p>
+          {me && players.length === 1
+            ? 'The other players left the game: you win!'
+            : 'The game is over.'}
+        </p>
+        <button type="button" className="btn btn--success game-room__start" onClick={leaveGame} disabled={isActing}>
+          Back to the home page
+        </button>
+      </div>
+    </TableLayout>
+  );
+
+  let table = lobby;
+  if (status === 'finished') {
+    table = gameOver;
+  } else if (status !== 'pending') {
+    table = (
+      <GameTable
+        roomCode={room_code}
+        players={players}
+        drawPileCount={drawPileCount}
+        discardTop={discardTop}
+        discardRecent={discardRecent}
+        hand={hand}
+        initialReveal={initialReveal}
+        currentPlayerId={currentPlayerId}
+        busy={isActing}
+        onRevealCard={handleRevealCard}
+        onDraw={handleDraw}
+        onSwap={handleSwap}
+        onDiscard={handleDiscard}
+        onTakeAndSwap={handleTakeAndSwap}
+        deal={deal}
+        onDealEnd={handleDealEnd}
+      />
+    );
+  }
+
   return (
     // The title on the left of the table and the leave button on its right. The error message sits under the
     // title, so the table never moves when one shows up.
@@ -201,32 +271,23 @@ export default function GameRoom() {
         {error && <p className="game-room__error">{error}</p>}
       </div>
 
-      {status === 'pending' ? lobby : (
-        <GameTable
-          roomCode={room_code}
-          players={players}
-          drawPileCount={drawPileCount}
-          discardTop={discardTop}
-          discardRecent={discardRecent}
-          hand={hand}
-          initialReveal={initialReveal}
-          currentPlayerId={currentPlayerId}
-          busy={isActing}
-          onRevealCard={handleRevealCard}
-          onDraw={handleDraw}
-          onSwap={handleSwap}
-          onDiscard={handleDiscard}
-          onTakeAndSwap={handleTakeAndSwap}
-          deal={deal}
-          onDealEnd={handleDealEnd}
-        />
-      )}
+      {table}
 
       <div className="game-room__side game-room__side--right">
-        <button onClick={handleLeaveGame} className="btn btn--danger">
+        <button onClick={handleLeaveGame} className="btn btn--danger" disabled={isActing}>
           Leave the table
         </button>
       </div>
+
+      {leaveDialogOpen && (
+        <LeaveGameDialog
+          inProgress={status === 'in_progress'}
+          busy={isActing}
+          onLeave={leaveGame}
+          onPause={() => navigate('/')}
+          onClose={closeLeaveDialog}
+        />
+      )}
     </div>
   );
 }

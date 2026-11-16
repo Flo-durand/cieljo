@@ -23,24 +23,20 @@ class InitialRevealService
       end
 
       card.update!(is_face_up: true)
-      choose_first_player if everyone_revealed?
+      self.class.choose_first_player_if_everyone_revealed(@game)
     end
   end
 
-  private
+  # Once every player has revealed their first cards, the player with the highest total plays first (on a tie,
+  # the player who comes first in turn order). Also called when a player leaves during the reveal: the others
+  # may all be done already. Call it while holding the lock of the game row.
+  def self.choose_first_player_if_everyone_revealed(game)
+    revealed = game.cards.where(location: "player_grid", is_face_up: true)
+    return unless revealed.count == game.players.count * Game::INITIAL_REVEAL_COUNT
 
-  def revealed_cards
-    @game.cards.where(location: "player_grid", is_face_up: true)
-  end
-
-  def everyone_revealed?
-    revealed_cards.count == @game.players.count * Game::INITIAL_REVEAL_COUNT
-  end
-
-  # Highest total first; on a tie, the player who comes first in turn order
-  def choose_first_player
-    totals = revealed_cards.group(:player_id).sum(:value)
-    first_player = @game.players.max_by { |player| [ totals.fetch(player.id, 0), -player.turn_order ] }
-    @game.update!(current_player: first_player)
+    totals = revealed.group(:player_id).sum(:value)
+    # A fresh query: the players already loaded may still include one who just left
+    first_player = game.players.order(:turn_order).max_by { |player| [ totals.fetch(player.id, 0), -player.turn_order ] }
+    game.update!(current_player: first_player)
   end
 end

@@ -5,8 +5,30 @@ class Api::V1::GamesController < ApplicationController
   # Each new game inserts 150 cards: 10 new games per minute for a user (runs after authenticate_user!)
   rate_limit to: 10, within: 1.minute, only: :create, by: -> { current_user.id }, with: -> { render_rate_limited }
 
-  before_action :set_game, only: %i[show start reveal draw swap discard]
-  before_action :set_current_player, only: %i[show reveal draw swap discard]
+  before_action :set_game, only: %i[show start leave reveal draw swap discard]
+  before_action :set_current_player, only: %i[show leave reveal draw swap discard]
+
+  # GET /api/v1/games: the games of the current user in the lobby or in progress, the most recently active first
+  def index
+    games = Game.where(status: %w[pending in_progress])
+                .where(id: current_user.players.select(:game_id))
+                .includes(:players, current_player: :user)
+                .order(updated_at: :desc)
+
+    render json: {
+      data: games.map do |game|
+        {
+          room_code: game.room_code,
+          status: game.status,
+          players_count: game.players.size,
+          max_players: Game::MAX_PLAYERS,
+          initial_reveal: game.initial_reveal_phase?,
+          current_player: game.current_player && game.status == "in_progress" ? game.current_player.user.username : nil,
+          your_turn: game.status == "in_progress" && game.current_player&.user_id == current_user.id
+        }
+      end
+    }, status: :ok
+  end
 
   def show
     players = @game.players.includes(:user).order(:turn_order)
@@ -45,31 +67,19 @@ class Api::V1::GamesController < ApplicationController
   end
 
   def create
-    @game = Game.new(status: "pending", turn_number: 1)
+    game = GameCreatorService.new(current_user).call
 
-    if @game.save
-      @player = @game.players.new(user: current_user, score: 0, turn_order: 1)
-
-      if @player.save
-        @game.update(current_player: @player)
-
-        GameInitializerService.new(@game).call
-
-        render json: {
-          status: { code: 200, message: "Game room created and deck initialized." },
-          data: {
-            game_id: @game.id,
-            room_code: @game.room_code,
-            status: @game.status,
-            current_player: current_user.username
-          }
-        }, status: :created
-      else
-        render json: { error: "Could not add the player to the game." }, status: :unprocessable_entity
-      end
-    else
-      render json: { error: "Could not create the game room." }, status: :unprocessable_entity
-    end
+    render json: {
+      status: { code: 200, message: "Game room created and deck initialized." },
+      data: {
+        game_id: game.id,
+        room_code: game.room_code,
+        status: game.status,
+        current_player: current_user.username
+      }
+    }, status: :created
+  rescue ActiveRecord::RecordInvalid
+    render json: { error: "Could not create the game room." }, status: :unprocessable_entity
   end
 
   def join
@@ -134,6 +144,18 @@ class Api::V1::GamesController < ApplicationController
       }
     }, status: :ok
   rescue GameStarterService::Error => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  # POST /api/v1/games/:room_code/leave
+  def leave
+    deleted = LeaveGameService.new(@game, @player).call
+
+    render json: {
+      status: { code: 200, message: "You left the game." },
+      data: { room_code: @game.room_code, game_deleted: deleted }
+    }, status: :ok
+  rescue LeaveGameService::Error => e
     render json: { error: e.message }, status: :unprocessable_entity
   end
 

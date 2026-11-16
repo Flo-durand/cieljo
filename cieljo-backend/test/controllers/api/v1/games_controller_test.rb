@@ -524,4 +524,107 @@ class Api::V1::GamesControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ 5, 5, 5 ], recent.last(3).map { |card| card["value"] }
     assert_equal replaced.value, recent[1]["value"], "a discarded card is face up, so its value is sent"
   end
+  # --- Leaving a game ---
+
+  def leave_game(user, room_code = "ABCD")
+    post leave_api_v1_game_url(room_code), headers: auth_headers(user), as: :json
+  end
+
+  test "a player leaves the lobby" do
+    game = games(:one)
+    join("ABCD", users(:two))
+
+    leave_game(users(:two))
+
+    assert_response :ok
+    assert_equal false, response.parsed_body.dig("data", "game_deleted")
+    assert_not game.players.exists?(user: users(:two))
+  end
+
+  test "the last player leaving the lobby deletes it" do
+    leave_game(users(:one))
+
+    assert_response :ok
+    assert_equal true, response.parsed_body.dig("data", "game_deleted")
+    assert_not Game.exists?(room_code: "ABCD")
+  end
+
+  test "only the players of a game can leave it" do
+    leave_game(users(:two))
+
+    assert_response :forbidden
+  end
+
+  test "leaving an unknown room answers 404" do
+    leave_game(users(:one), "ZZZZ")
+
+    assert_response :not_found
+  end
+  test "forfeiting a game in progress finishes it when one player is left" do
+    start_turns
+
+    leave_game(users(:two))
+
+    assert_response :ok
+    data = show_as(users(:one))
+    assert_equal "finished", data["status"]
+    assert_equal [ "player_one" ], data["players"].map { |player| player["username"] }
+  end
+  # --- Listing my games ---
+
+  def my_games(user)
+    get api_v1_games_url, headers: auth_headers(user), as: :json
+    response.parsed_body["data"]
+  end
+
+  test "lists the games of the user that are not finished" do
+    # Player one is in game one (pending, ABCD); player two in game two (in progress, WXYZ)
+    games = my_games(users(:one))
+
+    assert_response :ok
+    assert_equal [ "ABCD" ], games.map { |game| game["room_code"] }
+    assert_equal "pending", games.first["status"]
+    assert_equal 1, games.first["players_count"]
+    assert_equal false, games.first["your_turn"]
+  end
+
+  test "tells whose turn it is in a game in progress" do
+    start_turns
+
+    one = my_games(users(:one)).find { |game| game["room_code"] == "ABCD" }
+    two = my_games(users(:two)).find { |game| game["room_code"] == "ABCD" }
+
+    assert_equal [ "in_progress", "player_one", true ], one.values_at("status", "current_player", "your_turn")
+    assert_equal [ "player_one", false ], two.values_at("current_player", "your_turn")
+  end
+
+  test "finished games and games of other players are not listed" do
+    games(:one).update!(status: "finished")
+
+    assert_empty my_games(users(:one))
+  end
+
+  test "the most recently active game comes first" do
+    other = Game.create!(status: "pending", turn_number: 1)
+    other.players.create!(user: users(:one), score: 0, turn_order: 1)
+    games(:one).touch
+
+    assert_equal [ "ABCD", other.room_code ], my_games(users(:one)).map { |game| game["room_code"] }
+  end
+
+  test "listing the games requires a session" do
+    get api_v1_games_url, as: :json
+
+    assert_response :unauthorized
+  end
+  # --- Creating a game ---
+
+  test "creates a game room with the user as host" do
+    post api_v1_games_url, headers: auth_headers(users(:two)), as: :json
+
+    assert_response :created
+    game = Game.find_by(room_code: response.parsed_body.dig("data", "room_code"))
+    assert_equal users(:two), game.players.sole.user
+    assert_equal 150, game.cards.count
+  end
 end

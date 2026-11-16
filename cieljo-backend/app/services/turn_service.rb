@@ -101,16 +101,9 @@ class TurnService
     cards("player_grid").find_by(player: @player, id: card_id) || raise(Error, "This card is not in your grid.")
   end
 
-  # The discard pile is ordered by updated_at: each card put on it gets a later time than the previous top
-  # card, even when several cards are discarded at once (a removed column), so its order is never ambiguous.
+  # See Game#discard! (the order of the discard pile)
   def discard!(card)
-    card.update!(location: "discard_pile", player: nil, row: nil, column: nil, is_face_up: true, updated_at: next_discard_time)
-  end
-
-  def next_discard_time
-    now = Time.current
-    latest = cards("discard_pile").maximum(:updated_at)
-    latest && latest >= now ? latest + Rational(1, 1_000_000) : now
+    @game.discard!(card)
   end
 
   # A column of 3 face-up cards of the same value leaves the grid: its cards go onto the discard pile,

@@ -26,11 +26,14 @@ Rails.application.routes.draw do
 
       # --- Game routes ---
       # GET /api/v1/games/:room_code returns the game and its players
-      resources :games, only: [ :create, :show ], param: :room_code do
+      # GET /api/v1/games lists the games of the current user that are not finished (to come back to one)
+      resources :games, only: [ :index, :create, :show ], param: :room_code do
         # POST /api/v1/games/join with { room_code }
         post :join, on: :collection
         # POST /api/v1/games/:room_code/start (host only)
         post :start, on: :member
+        # POST /api/v1/games/:room_code/leave: the current user leaves the game
+        post :leave, on: :member
         # POST /api/v1/games/:room_code/reveal with { card_id }
         post :reveal, on: :member
         # Turns: draw a card, then swap it with a grid card or discard it and reveal a grid card

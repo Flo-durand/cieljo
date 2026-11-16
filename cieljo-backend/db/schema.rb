@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_16_090100) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_16_120100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -52,14 +52,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_090100) do
     t.integer "row"
     t.datetime "updated_at", null: false
     t.integer "value", null: false
-    t.index ["game_id"], name: "index_cards_on_game_id"
-    t.index ["location"], name: "index_cards_on_location"
+    t.index ["game_id", "location"], name: "index_cards_on_game_id_and_location"
     t.index ["player_id"], name: "index_cards_on_player_id"
   end
 
   create_table "friendships", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.integer "friend_id", null: false
+    t.bigint "friend_id", null: false
     t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
@@ -70,7 +69,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_090100) do
 
   create_table "games", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.integer "current_player_id"
+    t.bigint "current_player_id"
     t.string "drawn_from"
     t.string "room_code", null: false
     t.string "status", default: "pending", null: false
@@ -83,8 +82,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_090100) do
   create_table "invitations", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "game_id", null: false
-    t.integer "guest_id", null: false
-    t.integer "host_id", null: false
+    t.bigint "guest_id", null: false
+    t.bigint "host_id", null: false
     t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
     t.index ["game_id"], name: "index_invitations_on_game_id"
@@ -288,7 +287,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_090100) do
   add_foreign_key "cards", "games"
   add_foreign_key "cards", "players"
   add_foreign_key "friendships", "users"
+  add_foreign_key "friendships", "users", column: "friend_id"
+  add_foreign_key "games", "players", column: "current_player_id", on_delete: :nullify
   add_foreign_key "invitations", "games"
+  add_foreign_key "invitations", "users", column: "guest_id"
+  add_foreign_key "invitations", "users", column: "host_id"
   add_foreign_key "players", "games"
   add_foreign_key "players", "users"
   add_foreign_key "solid_queue_batch_executions", "solid_queue_batches", column: "batch_id", on_delete: :cascade
