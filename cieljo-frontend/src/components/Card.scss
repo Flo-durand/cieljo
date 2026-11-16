@@ -23,9 +23,9 @@
     color: $color-black;
   }
 
+  // A card rendered as a button: a face-down card keeps no border, a face-up one keeps its own
   &--clickable {
     padding: 0;
-    border: none;
     cursor: pointer;
     font-family: inherit;
     transition: transform 0.1s, box-shadow 0.1s;
@@ -35,6 +35,10 @@
       transform: translateY(-4px);
       box-shadow: 0 0 0 3px $color-highlight;
       outline: none;
+    }
+
+    &.card--face-down {
+      border: none;
     }
   }
 
@@ -65,6 +69,14 @@
   // The dragged card stays in place but invisible while its copy moves
   &--lifted {
     visibility: hidden;
+  }
+
+  // The card in hand selected for a swap by clicks (see GameTable.jsx): it stays raised until the swap
+  &--selected,
+  &--selected:hover,
+  &--selected:focus-visible {
+    transform: translateY(-8px);
+    box-shadow: 0 0 0 4px $color-highlight;
   }
 
   // The card under the dragged card, where it would be dropped

@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import useCardDrag from '../hooks/useCardDrag';
 import useDealAnimation from '../hooks/useDealAnimation';
 import useTableChanges from '../hooks/useTableChanges';
@@ -9,6 +9,7 @@ import PlayerGrid from './PlayerGrid';
 import RoomCode from './RoomCode';
 import TableCenter from './TableCenter';
 import TableLayout from './TableLayout';
+import { cardLabel, discardPileLabel, drawPileLabel } from '../game/cardLabel';
 import { faceUpCount, tableMessage } from '../game/tableMessage';
 
 // rules are the rules of the game from the API (see rulesFromApi in src/game/rules.js).
@@ -16,6 +17,8 @@ import { faceUpCount, tableMessage } from '../game/tableMessage';
 // hand is the card the current player has drawn (or null); busy is true while an action is being sent.
 // The turn actions (onDraw, onSwap, onDiscard, onTakeAndSwap) return a promise of true when they worked.
 // discardRecent lists the last discarded cards, oldest first: a removed column shows them landing one by one.
+// A swap is played by dragging the card in hand (or the discard pile card) onto the grid, or by clicks, which also
+// works with the keyboard: click the card in hand to select it, then the grid card to replace.
 export default function GameTable({
   roomCode, rules, players, drawPileCount, discardTop, discardRecent = [], hand, initialReveal, currentPlayerId, busy,
   onRevealCard, onDraw, onSwap, onDiscard, onTakeAndSwap, deal, onDealEnd,
@@ -68,12 +71,28 @@ export default function GameTable({
   const drag = useCardDrag({
     canDropOn: cardId => canDrag && me.grid.some(card => card.id === cardId),
     onDrop: cardId => swapAndThrow(cardId, myHand ? onSwap : onTakeAndSwap),
-    // Clicking the discard pile card takes it
-    onClick: () => {
-      if (!myHand && canDraw) onDraw('discard_pile');
-    },
   });
   const onPointerDown = canDrag ? drag.onPointerDown : undefined;
+
+  // --- Swap by clicks: the card in hand is selected, then the grid card to replace is clicked ---
+  // The selection is kept by card id, so it ends by itself when the card in hand is played.
+  const [selectedHandId, setSelectedHandId] = useState(null);
+  const handSelected = Boolean(myHand) && selectedHandId === myHand.id;
+  const toggleHand = () => setSelectedHandId(handSelected ? null : myHand.id);
+  const handElement = () => document.querySelector(`.table-center [data-card-id="${myHand.id}"]`);
+  // The card in hand glides to the grid card like a dropped card (see useCardDrag)
+  const swapByClick = cardId => {
+    setSelectedHandId(null);
+    return drag.moveTo(handElement(), cardId);
+  };
+
+  // With the keyboard, the pile that was pressed to draw is gone: the card drawn takes the focus it lost
+  const myHandId = myHand?.id;
+  useEffect(() => {
+    if (myHandId && !busy && document.activeElement === document.body) {
+      document.querySelector(`.table-center [data-card-id="${myHandId}"]`)?.focus();
+    }
+  }, [myHandId, busy]);
   // The dragged card stays hidden until the move is over, even if it changes place in between
   const isLifted = card => Boolean(card) && card.id === drag.draggedCardId;
   const liftedClass = card => (isLifted(card) ? 'card--lifted' : '');
@@ -82,11 +101,17 @@ export default function GameTable({
 
   // --- Clicks on the player's own grid ---
   // During the initial reveal: reveal a card, until 2 are face up.
-  // With a card drawn from the draw pile: throw it and reveal the clicked face-down card.
+  // With the card in hand selected: swap it with the clicked card.
+  // Otherwise, with a card drawn from the draw pile: throw it and reveal the clicked face-down card.
   const canRevealCard = card => !dealing && initialReveal && !card.face_up && faceUpCount(me) < rules.initialRevealCount;
+  const canSwapWith = () => !busy && handSelected;
   const canDiscardFor = card => !busy && myHand?.drawn_from === 'draw_pile' && !card.face_up;
-  const canClickCard = card => canRevealCard(card) || canDiscardFor(card);
-  const onCardClick = card => (initialReveal ? onRevealCard(card.id) : discardAndThrow(card.id));
+  const canClickCard = card => canRevealCard(card) || canSwapWith() || canDiscardFor(card);
+  const onCardClick = card => {
+    if (initialReveal) return onRevealCard(card.id);
+    if (handSelected) return swapByClick(card.id);
+    return discardAndThrow(card.id);
+  };
 
   const renderPlayer = (player, { small }) => (
     <PlayerGrid
@@ -106,23 +131,30 @@ export default function GameTable({
   // --- The piles: the card in hand sits on the pile it was taken from ---
   const shownDrawCount = drawPileCount + Math.max(0, dealtCards - landedCount); // cards in flight during the deal
 
+  // The card in hand: the player can drag it, or click it to select it for a swap.
+  // It flips over by itself as it turns face up (see Card.jsx).
+  const handCard = hand && (
+    <Card
+      card={hand}
+      onPointerDown={myHand ? onPointerDown : undefined}
+      onClick={myHand && !busy ? toggleHand : undefined}
+      pressed={myHand ? handSelected : undefined}
+      label={`${holderLabel}, ${cardLabel(hand)}`}
+      className={[liftedClass(hand), handSelected && 'card--selected'].filter(Boolean).join(' ')}
+    />
+  );
+
   let drawPile;
   let drawLabel = `Draw pile (${shownDrawCount})`;
   if (hand?.drawn_from === 'draw_pile') {
-    drawPile = (
-      <Card
-        card={hand}
-        onPointerDown={myHand ? onPointerDown : undefined}
-        // The card flips over by itself as it turns face up (see Card.jsx)
-        className={liftedClass(hand)}
-      />
-    );
+    drawPile = handCard;
     drawLabel = holderLabel;
   } else {
     drawPile = (
       <Card
         card={shownDrawCount > 0 ? { face_up: false } : null}
         onClick={canDraw ? () => onDraw('draw_pile') : undefined}
+        label={drawPileLabel(shownDrawCount)}
       />
     );
   }
@@ -130,7 +162,7 @@ export default function GameTable({
   let discardPile;
   let discardLabel = 'Discard pile';
   if (hand?.drawn_from === 'discard_pile') {
-    discardPile = <Card card={hand} onPointerDown={myHand ? onPointerDown : undefined} className={liftedClass(hand)} />;
+    discardPile = handCard;
     discardLabel = holderLabel;
   } else {
     // While a removed column is flying, the discard pile shows the cards that have already landed
@@ -141,11 +173,20 @@ export default function GameTable({
     if (dealing) discardClassName = landedCount < dealtCards ? 'card--hidden' : 'card--flip-in';
     else if (shownDiscard && shownDiscard.id === leavingCardId) discardClassName = 'card--hidden';
     else if (shownDiscard && shownDiscard.id === flippedDiscardId) discardClassName = 'card--flip-in';
-    // Before drawing, the discard pile card can be dragged straight onto the grid
+    // Before drawing, the discard pile card can be clicked to take it, or dragged straight onto the grid.
+    // Taken with a click, it is selected at once: a card from the discard pile can only be swapped, so the next
+    // click on the grid swaps it (the selection keeps the card id, which stays the same once in hand).
+    const canTakeDiscard = !myHand && canDraw && discardHidden === 0 && Boolean(shownDiscard);
+    const takeDiscard = () => {
+      setSelectedHandId(shownDiscard.id);
+      onDraw('discard_pile');
+    };
     discardPile = (
       <Card
         card={shownDiscard}
-        onPointerDown={!myHand && canDraw && discardHidden === 0 ? onPointerDown : undefined}
+        onPointerDown={canTakeDiscard ? onPointerDown : undefined}
+        onClick={canTakeDiscard ? takeDiscard : undefined}
+        label={discardPileLabel(shownDiscard)}
         className={`${discardClassName} ${liftedClass(shownDiscard)}`.trim()}
       />
     );
@@ -159,7 +200,7 @@ export default function GameTable({
         <InfoButton
           message={tableMessage({
             me, players, initialReveal, initialRevealCount: rules.initialRevealCount, currentPlayerId, dealing,
-            hand: myHand, notice,
+            hand: myHand, handSelected, notice,
           })}
         />
       )}
