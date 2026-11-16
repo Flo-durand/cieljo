@@ -8,6 +8,28 @@ class Api::V1::GamesController < ApplicationController
   before_action :set_game, only: %i[show start leave reveal draw swap discard]
   before_action :set_current_player, only: %i[show leave reveal draw swap discard]
 
+  # GET /api/v1/games: the games of the current user in the lobby or in progress, the most recently active first
+  def index
+    games = Game.where(status: %w[pending in_progress])
+                .where(id: current_user.players.select(:game_id))
+                .includes(:players, current_player: :user)
+                .order(updated_at: :desc)
+
+    render json: {
+      data: games.map do |game|
+        {
+          room_code: game.room_code,
+          status: game.status,
+          players_count: game.players.size,
+          max_players: Game::MAX_PLAYERS,
+          initial_reveal: game.initial_reveal_phase?,
+          current_player: game.current_player && game.status == "in_progress" ? game.current_player.user.username : nil,
+          your_turn: game.status == "in_progress" && game.current_player&.user_id == current_user.id
+        }
+      end
+    }, status: :ok
+  end
+
   def show
     players = @game.players.includes(:user).order(:turn_order)
     grids = @game.cards.where(location: "player_grid").order(:row, :column).group_by(&:player_id)
