@@ -2,7 +2,7 @@
 
 Cieljo is a multiplayer online card game in the style of **Skyjo**. Players create or join a game room with a 4-character code and play against each other in their browser.
 
-> 🚧 Work in progress: accounts, game rooms, the deal, the reveal of the first cards, the turns, the removal of columns and the end of the round with its scores work. A game has a single round for now: playing several rounds up to 100 points comes next.
+> 🚧 Work in progress: accounts, game rooms, the deal, the reveal of the first cards, the turns, the removal of columns and the rounds with their scores work: a game is played in several rounds until a player reaches 100 points.
 
 ## Tech stack
 
@@ -60,9 +60,10 @@ By default the frontend calls the API at `http://localhost:3000/api/v1`, and the
 
    The replaced card goes face up onto the discard pile, then the turn passes to the next player. The drag and drop works with a mouse, a finger or a pen, and the whole game can be played with the keyboard (Tab, then Enter) or a screen reader, which names every card.
 7. When a column of your grid holds **3 face-up cards of the same value**, it is removed: its cards fly to the discard pile and the remaining columns close up.
-8. When a player has revealed **all the cards left in their grid**, the last round begins: every other player plays one more turn. Then all the cards are revealed and each player scores the total of their grid (removed columns no longer count). If the player who ended the round does not have the lowest score (a tie is not enough), their points are doubled when positive. The scores show in the middle of the table: the lowest score wins.
-9. Click the **"i" button** in the bottom right corner of the table to see what to do and whose turn it is. A yellow dot appears on it when the message changes. The name of the player whose turn it is is highlighted in yellow.
-10. To leave, click **Leave the table**. In the lobby you simply leave (you can join again with the code). During a game you can **pause it** (your seat waits for you) or **quit it for good** (you forfeit: your cards leave the game and the others go on). When only one player is left, they win. After the scores, going back home keeps the game on screen for the others. Find your paused games with the **My games** button on the home page.
+8. When a player has revealed **all the cards left in their grid**, the last round begins: every other player plays one more turn. Then all the cards are revealed and each player scores the total of their grid (removed columns no longer count). If the player who ended the round does not have the lowest score (a tie is not enough), their points are doubled when positive. The scores show in the middle of the table, with the points of every round and each player's total.
+9. Between two rounds, click **Ready**: the next round starts once every player is ready, or after 30 seconds anyway. A new deck is dealt, everyone reveals 2 cards, and the player who ended the previous round plays first. When a player reaches **100 points**, the game is over: the lowest total wins.
+10. Click the **"i" button** in the bottom right corner of the table to see what to do and whose turn it is. A yellow dot appears on it when the message changes. The name of the player whose turn it is is highlighted in yellow.
+11. To leave, click **Leave the table**. In the lobby you simply leave (you can join again with the code). During a game you can **pause it** (your seat waits for you) or **quit it for good** (you forfeit: your cards leave the game and the others go on). When only one player is left, they win. Between two rounds, leaving works the same way. After the final scores, going back home keeps the game on screen for the others. Find your paused games with the **My games** button on the home page.
 
 Games nobody has played for 24 hours are deleted automatically.
 
@@ -86,9 +87,9 @@ All routes are under `/api/v1`. Every endpoint except sign-up and login needs an
 | `POST` | `/auth/login` | Log in with `{ user: { email, password } }`. Returns the token in `data.token`; 401 for wrong credentials, 400 without credentials (10 attempts per 3 minutes per IP address) |
 | `DELETE` | `/auth/logout` | Log out: revokes every token of the user, on all their devices |
 | `GET` | `/me` | The logged-in user (`id`, `email`, `username`) |
-| `GET` | `/games` | Your games in the lobby or in progress, most recently active first, with whose turn it is |
+| `GET` | `/games` | Your games in the lobby, in progress or between two rounds, most recently active first, with whose turn it is |
 | `POST` | `/games` | Create a game room. The current user becomes the host (10 per minute per user) |
-| `GET` | `/games/:room_code` | Get a game, its players and their grids, the piles (with the last 5 discarded cards) and the current player (players only). The values of face-down cards are never sent |
+| `GET` | `/games/:room_code` | Get a game, its players and their grids, the piles (with the last 5 discarded cards) and the current player (players only), the round number, each player's total and points per round, and between two rounds who is ready and the seconds left. The values of face-down cards are never sent |
 | `POST` | `/games/join` | Join a pending game with `{ room_code }` (8 players maximum) |
 | `POST` | `/games/:room_code/leave` | Leave the lobby (the next player becomes the host if needed), or forfeit a game in progress |
 | `POST` | `/games/:room_code/start` | Start the game and deal the cards (host only, at least 2 players) |
@@ -96,6 +97,7 @@ All routes are under `/api/v1`. Every endpoint except sign-up and login needs an
 | `POST` | `/games/:room_code/draw` | On your turn, take a card from `{ source: "draw_pile" \| "discard_pile" }` into your hand |
 | `POST` | `/games/:room_code/swap` | Put the card in your hand in place of a grid card `{ card_id }`, which goes onto the discard pile. Removes a completed column, returned as `removed_column`. Ends the turn |
 | `POST` | `/games/:room_code/discard` | Throw a card drawn from the draw pile and reveal a face-down grid card `{ card_id }`. Removes a completed column, returned as `removed_column`. Ends the turn |
+| `POST` | `/games/:room_code/ready` | Between two rounds, you are ready for the next one. It starts once every player is ready, or on any request after 30 seconds |
 
 Account routes: only sign-up (`POST /users`), login (`POST /auth/login`), logout (`DELETE /auth/logout`) and the current user (`GET /me`) exist. Devise's other routes (sign in/out, password, account edit or delete) are not exposed because they do not work with the JWT flow; editing or deleting an account and "forgot password" emails are planned as dedicated endpoints.
 
@@ -128,15 +130,15 @@ Each component's `.scss` file sits next to its `.jsx` file.
 
 ### Game domain
 
-- **Game**: has a unique 4-character `room_code`, a `status` (`pending`, `in_progress` or `finished`) and a `current_player`. The host is the player who created the game.
-- **Player**: links a `User` to a `Game`, with a `score` and a `turn_order`. A game has 2 to 8 players (`Game::MAX_PLAYERS`).
+- **Game**: has a unique 4-character `room_code`, a `status` (`pending`, `in_progress`, `round_over` between two rounds, or `finished`), a `round_number` and a `current_player`. The host is the player who created the game.
+- **Player**: links a `User` to a `Game`, with a `score` (the total of the rounds), a `turn_order` and `ready_for_next_round`. **RoundResult** keeps the points of each player for each round. A game has 2 to 8 players (`Game::MAX_PLAYERS`).
 - **Card**: has a `value`, a `location` (`draw_pile`, `player_grid`, `discard_pile` or `hand` for the card the current player has drawn), `is_face_up`, and a `row`/`column` in a player's grid.
 - The deck uses the Skyjo distribution of 150 cards: -2 ×5, -1 ×15, and 0 to 12 ×10 each. It is shuffled when the game is created.
-- **Reveal phase**: after the deal, the game is `in_progress` without a `current_player` until every player has revealed 2 cards. The player with the highest total then becomes the current player (on a tie, the first in turn order).
+- **Reveal phase**: after the deal, the game is `in_progress` without a `current_player` until every player has revealed 2 cards. The player who ended the previous round then plays first; in the first round (or if that player has quit), the player with the highest total (on a tie, the first in turn order).
 - **Turns**: the current player draws a card (`games.drawn_from` remembers whether it comes from the draw pile or the discard pile), then swaps it or, for a draw pile card, discards it and reveals a grid card. The turn then goes to the next player in turn order. When the draw pile is empty, it is refilled with the discard pile except its top card.
 - **Column removal**: after a move, a column of 3 face-up cards of the same value goes onto the discard pile; the other cards keep their row and column, and the grid closes up on screen.
-- **End of the round**: the first player with no face-down card left in their grid ends the round (`games.round_ender_turn_order` keeps their seat); each other player plays once more, then every card is revealed, the round points are added to `players.score` and the game is `finished`. The points of the player who ended the round are doubled when positive and another player has a lower or equal score.
-- **Leaving**: in the lobby the player is removed and the seats are renumbered; an empty lobby is deleted. In a game in progress the player forfeits: their cards leave the game, a card in their hand goes onto the discard pile, the turn passes on if it was theirs (or the round ends, during the last round), and with one player left the game is `finished` (that player wins).
+- **End of the round**: the first player with no face-down card left in their grid ends the round (`games.round_ender_turn_order` keeps their seat); each other player plays once more, then every card is revealed, the round points are saved as `RoundResult`s and added to `players.score`. If a player reaches 100 points the game is `finished`; otherwise it is `round_over` until every player is ready or 30 seconds have passed (`NextRoundService`), and the next round is dealt with a new shuffled deck. The points of the player who ended the round are doubled when positive and another player has a lower or equal score.
+- **Leaving**: in the lobby the player is removed and the seats are renumbered; an empty lobby is deleted. In a game in progress the player forfeits: their cards leave the game, a card in their hand goes onto the discard pile, the turn passes on if it was theirs (or the round ends, during the last round), and with one player left the game is `finished` (that player wins). Between two rounds the player is removed, and the next round starts if all the others are ready.
 - **Cleanup**: a job (Solid Queue, every hour in production) deletes the games where nothing changed for 24 hours.
 
 ## Deploying to Render
@@ -212,8 +214,8 @@ npm run build
 - [x] Game info bubble (what to do, whose turn)
 - [x] Leave, pause or forfeit a game, and automatic cleanup of inactive games
 - [x] Column removal (3 identical face-up cards), with its animation
-- [x] End of the round and scoring (one round per game)
-- [ ] Several rounds, until a player reaches 100 points
+- [x] End of the round and scoring
+- [x] Several rounds, until a player reaches 100 points
 - [x] Up to 8 players, seated around a table of fixed width
 - [x] A table that adapts to the size of the screen (computers and tablets)
 - [ ] A layout for phones in portrait
