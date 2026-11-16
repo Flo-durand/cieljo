@@ -4,7 +4,16 @@ import { grid, players } from './testHelpers';
 
 const table = (overrides = {}) => {
   const all = overrides.players ?? players(2);
-  return { me: all.find(player => player.current_user), players: all, initialReveal: false, currentPlayerId: 1, dealing: false, hand: null, ...overrides };
+  return {
+    me: all.find(player => player.current_user),
+    players: all,
+    initialReveal: false,
+    initialRevealCount: 2,
+    currentPlayerId: 1,
+    dealing: false,
+    hand: null,
+    ...overrides,
+  };
 };
 
 describe('tableMessage', () => {

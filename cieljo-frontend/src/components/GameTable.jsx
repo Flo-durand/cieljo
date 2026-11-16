@@ -9,14 +9,15 @@ import PlayerGrid from './PlayerGrid';
 import RoomCode from './RoomCode';
 import TableCenter from './TableCenter';
 import TableLayout from './TableLayout';
-import { faceUpCount, INITIAL_REVEAL_COUNT, tableMessage } from '../game/tableMessage';
+import { faceUpCount, tableMessage } from '../game/tableMessage';
 
+// rules are the rules of the game from the API (see rulesFromApi in src/game/rules.js).
 // deal (from buildDeal) plays the deal animation; onDealEnd is called once it is over.
 // hand is the card the current player has drawn (or null); busy is true while an action is being sent.
 // The turn actions (onDraw, onSwap, onDiscard, onTakeAndSwap) return a promise of true when they worked.
 // discardRecent lists the last discarded cards, oldest first: a removed column shows them landing one by one.
 export default function GameTable({
-  roomCode, players, drawPileCount, discardTop, discardRecent = [], hand, initialReveal, currentPlayerId, busy,
+  roomCode, rules, players, drawPileCount, discardTop, discardRecent = [], hand, initialReveal, currentPlayerId, busy,
   onRevealCard, onDraw, onSwap, onDiscard, onTakeAndSwap, deal, onDealEnd,
 }) {
   const me = players.find(player => player.current_user);
@@ -59,7 +60,7 @@ export default function GameTable({
 
   // --- Removed columns and players who left, since the previous refresh ---
   const { notice, discardHidden, flownCardIds, extraCardsOf } = useTableChanges({
-    players, discardTop, currentPlayerId, dealing, discardRef, leavingCardId,
+    players, discardTop, currentPlayerId, dealing, discardRef, leavingCardId, gridRows: rules.gridRows,
   });
 
   // The card that can be dragged onto the grid: the card in hand, or the discard pile card before drawing
@@ -82,7 +83,7 @@ export default function GameTable({
   // --- Clicks on the player's own grid ---
   // During the initial reveal: reveal a card, until 2 are face up.
   // With a card drawn from the draw pile: throw it and reveal the clicked face-down card.
-  const canRevealCard = card => !dealing && initialReveal && !card.face_up && faceUpCount(me) < INITIAL_REVEAL_COUNT;
+  const canRevealCard = card => !dealing && initialReveal && !card.face_up && faceUpCount(me) < rules.initialRevealCount;
   const canDiscardFor = card => !busy && myHand?.drawn_from === 'draw_pile' && !card.face_up;
   const canClickCard = card => canRevealCard(card) || canDiscardFor(card);
   const onCardClick = card => (initialReveal ? onRevealCard(card.id) : discardAndThrow(card.id));
@@ -90,6 +91,8 @@ export default function GameTable({
   const renderPlayer = (player, { small }) => (
     <PlayerGrid
       player={player}
+      gridRows={rules.gridRows}
+      gridColumns={rules.gridColumns}
       small={small}
       isPlaying={player.id === currentPlayerId}
       canClickCard={player.current_user ? canClickCard : undefined}
@@ -154,7 +157,10 @@ export default function GameTable({
       renderPlayer={renderPlayer}
       corner={me && (
         <InfoButton
-          message={tableMessage({ me, players, initialReveal, currentPlayerId, dealing, hand: myHand, notice })}
+          message={tableMessage({
+            me, players, initialReveal, initialRevealCount: rules.initialRevealCount, currentPlayerId, dealing,
+            hand: myHand, notice,
+          })}
         />
       )}
     >

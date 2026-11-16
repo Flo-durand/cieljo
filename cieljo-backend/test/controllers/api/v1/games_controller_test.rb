@@ -56,10 +56,11 @@ class Api::V1::GamesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "This game is full (8 players maximum).", response.parsed_body["error"]
   end
 
-  test "the game details give the maximum number of players" do
+  test "the game details give the rules the frontend needs" do
     get api_v1_game_url("ABCD"), headers: auth_headers(users(:one)), as: :json
 
-    assert_equal 8, response.parsed_body.dig("data", "max_players")
+    expected = { "grid_rows" => 3, "grid_columns" => 4, "initial_reveal_count" => 2, "max_players" => 8 }
+    assert_equal expected, response.parsed_body.dig("data", "rules")
   end
 
   test "normalizes the room code" do

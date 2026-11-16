@@ -1,9 +1,6 @@
 // What changed on the table between two refreshes of the game: the removed columns and the players who left.
 // The game table animates the first ones and announces the second ones.
 
-// Must match GameStarterService::GRID_ROWS in the backend
-export const GRID_ROWS = 3;
-
 // The most frequent face-up value of a list of cards (the value of a column about to be removed)
 export function mostFrequentValue(cards) {
   const counts = new Map();
@@ -33,8 +30,8 @@ export function findDepartedPlayers(previousPlayers, players) {
   return previousPlayers.filter(previous => !players.some(player => player.id === previous.id));
 }
 
-// The 3 cards of a removed column, shown in the grid while they fly to the discard pile
-export const ghostCards = removal => Array.from({ length: GRID_ROWS }, (_, row) => ({
+// The cards of a removed column (one per row of the grid), shown in the grid while they fly to the discard pile
+export const ghostCards = (removal, gridRows) => Array.from({ length: gridRows }, (_, row) => ({
   id: `removed-${removal.playerId}-${removal.column}-${row}`,
   row,
   column: removal.column,

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { findDepartedPlayers, findRemovedColumns, ghostCards, GRID_ROWS } from '../game/tableChanges';
+import { findDepartedPlayers, findRemovedColumns, ghostCards } from '../game/tableChanges';
 import flyCard from '../utils/flyCard';
 import prefersReducedMotion from '../utils/prefersReducedMotion';
 
@@ -14,11 +14,13 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 // - a removed column: its cards fly to the discard pile one by one (discardRef), then the grid closes up;
 // - a player who left: the info bubble says so.
 // leavingCardId (from useThrowToDiscard): a thrown card still flying; a removed column waits for it, since the
-// column goes on top of it.
+// column goes on top of it. gridRows is the number of rows of a grid (from the rules of the API).
 // Returns the notice for the info bubble, how many of the last discarded cards are not shown yet
 // (discardHidden), the cards of a removed column that have left the grid (flownCardIds), and the cards of the
 // removed columns still to draw in each grid (extraCardsOf).
-export default function useTableChanges({ players, discardTop, currentPlayerId, dealing, discardRef, leavingCardId }) {
+export default function useTableChanges({
+  players, discardTop, currentPlayerId, dealing, discardRef, leavingCardId, gridRows,
+}) {
   // Columns gone since the previous refresh, animated one after the other
   const [removals, setRemovals] = useState([]);
   // How many of the last discarded cards are not shown on the discard pile yet (still to land)
@@ -49,7 +51,7 @@ export default function useTableChanges({ players, discardTop, currentPlayerId, 
       });
       if (!prefersReducedMotion()) {
         setRemovals(queued => [...queued, ...found]);
-        setDiscardHidden(hidden => hidden + GRID_ROWS * found.length);
+        setDiscardHidden(hidden => hidden + gridRows * found.length);
       }
     }
   }
@@ -64,7 +66,7 @@ export default function useTableChanges({ players, discardTop, currentPlayerId, 
 
     (async () => {
       await nextFrame();
-      for (const card of ghostCards(removal)) {
+      for (const card of ghostCards(removal, gridRows)) {
         const element = document.querySelector(`[data-card-id="${card.id}"]`);
         if (element && discardRef.current) {
           const { element: flyingCard, finished } = flyCard({
@@ -92,11 +94,11 @@ export default function useTableChanges({ players, discardTop, currentPlayerId, 
       setFlownCardIds([]);
       animatingRemovalRef.current = false;
     })();
-  }, [removals, leavingCardId, discardRef]);
+  }, [removals, leavingCardId, discardRef, gridRows]);
 
   const extraCardsOf = player => removals
     .filter(removal => removal.playerId === player.id)
-    .flatMap(ghostCards);
+    .flatMap(removal => ghostCards(removal, gridRows));
 
   return { notice: notice?.text, discardHidden, flownCardIds, extraCardsOf };
 }

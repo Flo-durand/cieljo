@@ -59,6 +59,10 @@
     font-size: scaled(32px);
   }
 
+  &__loading {
+    color: $color-text-muted;
+  }
+
   &__error {
     color: $color-danger;
     font-weight: bold;

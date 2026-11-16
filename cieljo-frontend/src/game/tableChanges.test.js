@@ -66,7 +66,7 @@ describe('mostFrequentValue', () => {
 
 describe('ghostCards', () => {
   it('builds the 3 face-up cards of a removed column', () => {
-    const cards = ghostCards({ playerId: 2, column: 1, value: -2 });
+    const cards = ghostCards({ playerId: 2, column: 1, value: -2 }, 3);
 
     expect(cards.map(card => [card.row, card.column, card.value, card.face_up])).toEqual([
       [0, 1, -2, true], [1, 1, -2, true], [2, 1, -2, true],

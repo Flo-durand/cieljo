@@ -7,6 +7,7 @@ import PlayerGrid from '../components/PlayerGrid';
 import RoomCode from '../components/RoomCode';
 import TableLayout from '../components/TableLayout';
 import { buildDeal } from '../game/deal';
+import { rulesFromApi } from '../game/rules';
 import prefersReducedMotion from '../utils/prefersReducedMotion';
 import './GameRoom.scss';
 
@@ -23,7 +24,8 @@ export default function GameRoom() {
   const [drawPileCount, setDrawPileCount] = useState(0);
   const [discardTop, setDiscardTop] = useState(null);
   const [discardRecent, setDiscardRecent] = useState([]);
-  const [maxPlayers, setMaxPlayers] = useState(null);
+  // The rules of the game from the API (grid size, cards to reveal, maximum of players); null until loaded
+  const [rules, setRules] = useState(null);
   const [hand, setHand] = useState(null);
   const [initialReveal, setInitialReveal] = useState(false);
   const [currentPlayerId, setCurrentPlayerId] = useState(null);
@@ -71,7 +73,7 @@ export default function GameRoom() {
         setDrawPileCount(data.data.draw_pile_count);
         setDiscardTop(data.data.discard_top);
         setDiscardRecent(data.data.discard_recent);
-        setMaxPlayers(data.data.max_players);
+        setRules(rulesFromApi(data.data.rules));
         setHand(data.data.hand);
         setInitialReveal(data.data.initial_reveal);
         setCurrentPlayerId(data.data.current_player_id);
@@ -185,14 +187,17 @@ export default function GameRoom() {
   let waiting = 'Everyone is here? Start the game!';
   if (players.length < 2) waiting = 'Waiting for other players...';
   else if (!isHost) waiting = 'Waiting for the host to start the game...';
-  const isFull = maxPlayers !== null && players.length >= maxPlayers;
-  const playerCount = maxPlayers === null ? '' : `${players.length}/${maxPlayers} players${isFull ? ' (the table is full)' : ''}`;
+  const isFull = rules !== null && players.length >= rules.maxPlayers;
+  const playerCount = rules === null ? '' : `${players.length}/${rules.maxPlayers} players${isFull ? ' (the table is full)' : ''}`;
+  const renderSeat = (player, { small }) => (
+    <PlayerGrid player={player} gridRows={rules.gridRows} gridColumns={rules.gridColumns} small={small} />
+  );
 
   // Before the deal, the players already sit at their seats, and the room code is in the middle of the table
   const lobby = (
     <TableLayout
       players={players}
-      renderPlayer={(player, { small }) => <PlayerGrid player={player} small={small} />}
+      renderPlayer={renderSeat}
     >
       <RoomCode
         code={room_code}
@@ -220,7 +225,7 @@ export default function GameRoom() {
   const gameOver = (
     <TableLayout
       players={players}
-      renderPlayer={(player, { small }) => <PlayerGrid player={player} small={small} />}
+      renderPlayer={renderSeat}
     >
       <div className="game-room__game-over">
         <h1 className="game-room__game-over-title">Game over</h1>
@@ -236,13 +241,17 @@ export default function GameRoom() {
     </TableLayout>
   );
 
-  let table = lobby;
-  if (status === 'finished') {
+  // Nothing is drawn before the first answer of the API, which gives the rules of the game
+  let table = <p className="game-room__loading">Loading the game...</p>;
+  if (rules && status === 'pending') {
+    table = lobby;
+  } else if (rules && status === 'finished') {
     table = gameOver;
-  } else if (status !== 'pending') {
+  } else if (rules) {
     table = (
       <GameTable
         roomCode={room_code}
+        rules={rules}
         players={players}
         drawPileCount={drawPileCount}
         discardTop={discardTop}

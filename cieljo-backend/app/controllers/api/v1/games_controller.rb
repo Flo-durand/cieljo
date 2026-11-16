@@ -39,7 +39,13 @@ class Api::V1::GamesController < ApplicationController
         game_id: @game.id,
         room_code: @game.room_code,
         status: @game.status,
-        max_players: Game::MAX_PLAYERS,
+        # The rules the frontend needs, so it never keeps its own copy of them
+        rules: {
+          grid_rows: GameStarterService::GRID_ROWS,
+          grid_columns: GameStarterService::GRID_COLUMNS,
+          initial_reveal_count: Game::INITIAL_REVEAL_COUNT,
+          max_players: Game::MAX_PLAYERS
+        },
         # True while the players reveal their first cards; the current player is then chosen
         initial_reveal: @game.initial_reveal_phase?,
         current_player_id: @game.current_player_id,
