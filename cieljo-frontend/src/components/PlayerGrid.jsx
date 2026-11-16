@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
-import prefersReducedMotion from '../utils/prefersReducedMotion';
+import { useAnimationsAllowed } from '../contexts/AnimationsContext';
 import Card from './Card';
 import './PlayerGrid.scss';
 
@@ -27,6 +27,7 @@ export default function PlayerGrid({
 
   // --- FLIP animation when the columns change ---
   const rootRef = useRef(null);
+  const animationsAllowed = useAnimationsAllowed();
   // Where each card was drawn at the previous render, relative to the seat (which never moves)
   const layoutRef = useRef(null);
   useLayoutEffect(() => {
@@ -41,7 +42,7 @@ export default function PlayerGrid({
     });
 
     const previous = layoutRef.current;
-    if (previous && previous.columnsKey !== columnsKey && !prefersReducedMotion()) {
+    if (previous && previous.columnsKey !== columnsKey && animationsAllowed) {
       positions.forEach(({ element, left, top }, cardId) => {
         const before = previous.positions.get(cardId);
         if (!before || (before.left === left && before.top === top)) return;

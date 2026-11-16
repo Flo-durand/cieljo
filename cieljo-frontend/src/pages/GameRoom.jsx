@@ -7,7 +7,10 @@ import PlayerGrid from '../components/PlayerGrid';
 import RoomCode from '../components/RoomCode';
 import TableLayout from '../components/TableLayout';
 import { buildDeal } from '../game/deal';
+import { AnimationsContext } from '../contexts/AnimationsContext';
+import { animationsAllowed } from '../game/animations';
 import { rulesFromApi } from '../game/rules';
+import usePageVisible from '../hooks/usePageVisible';
 import prefersReducedMotion from '../utils/prefersReducedMotion';
 import './GameRoom.scss';
 
@@ -35,6 +38,15 @@ export default function GameRoom() {
   // The deal being animated, set when this page sees the game go from pending to in progress
   const [deal, setDeal] = useState(null);
   const lastStatusRef = useRef(null);
+
+  // The animations only play in front of the player (see src/game/animations.js); the table reads it from
+  // AnimationsContext, and loadGame from animationsAllowedRef (it runs outside the render)
+  const pageVisible = usePageVisible();
+  const allowAnimations = animationsAllowed({ pageVisible, catchingUp: false, reducedMotion: prefersReducedMotion() });
+  const animationsAllowedRef = useRef(allowAnimations);
+  useEffect(() => {
+    animationsAllowedRef.current = allowAnimations;
+  }, [allowAnimations]);
   const handleDealEnd = useCallback(() => setDeal(null), []);
 
   // Loads of the game can cross (the refresh every few seconds and the reload after an action): every load gets
@@ -63,7 +75,7 @@ export default function GameRoom() {
 
       if (response.ok) {
         // Only animate a start seen live: reopening a started game shows the cards right away
-        if (lastStatusRef.current === 'pending' && data.data.status === 'in_progress' && !prefersReducedMotion()) {
+        if (lastStatusRef.current === 'pending' && data.data.status === 'in_progress' && animationsAllowedRef.current) {
           setDeal(buildDeal(data.data.players, data.data.discard_top));
         }
         lastStatusRef.current = data.data.status;
@@ -274,29 +286,31 @@ export default function GameRoom() {
   return (
     // The title on the left of the table and the leave button on its right. The error message sits under the
     // title, so the table never moves when one shows up.
-    <div className="game-room">
-      <div className="game-room__side game-room__side--left">
-        <h2 className="game-room__title">🎰 Skyjo table: Cieljo</h2>
-        {error && <p className="game-room__error">{error}</p>}
+    <AnimationsContext.Provider value={allowAnimations}>
+      <div className="game-room">
+        <div className="game-room__side game-room__side--left">
+          <h2 className="game-room__title">🎰 Skyjo table: Cieljo</h2>
+          {error && <p className="game-room__error">{error}</p>}
+        </div>
+
+        {table}
+
+        <div className="game-room__side game-room__side--right">
+          <button onClick={handleLeaveGame} className="btn btn--danger" disabled={isActing}>
+            Leave the table
+          </button>
+        </div>
+
+        {leaveDialogOpen && (
+          <LeaveGameDialog
+            inProgress={status === 'in_progress'}
+            busy={isActing}
+            onLeave={leaveGame}
+            onPause={() => navigate('/')}
+            onClose={closeLeaveDialog}
+          />
+        )}
       </div>
-
-      {table}
-
-      <div className="game-room__side game-room__side--right">
-        <button onClick={handleLeaveGame} className="btn btn--danger" disabled={isActing}>
-          Leave the table
-        </button>
-      </div>
-
-      {leaveDialogOpen && (
-        <LeaveGameDialog
-          inProgress={status === 'in_progress'}
-          busy={isActing}
-          onLeave={leaveGame}
-          onPause={() => navigate('/')}
-          onClose={closeLeaveDialog}
-        />
-      )}
-    </div>
+    </AnimationsContext.Provider>
   );
 }

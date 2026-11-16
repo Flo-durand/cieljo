@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { useAnimationsAllowed } from '../contexts/AnimationsContext';
 import { findDepartedPlayers, findRemovedColumns, ghostCards } from '../game/tableChanges';
 import flyCard from '../utils/flyCard';
-import prefersReducedMotion from '../utils/prefersReducedMotion';
 
 // Timings of the removed column animation
 const REMOVED_CARD_FLIGHT_MS = 450;
@@ -30,6 +30,7 @@ export default function useTableChanges({
   // "player_one removed a column of 5s!" or "player_two left the game.", shown in the info bubble until the turn
   // passes again
   const [notice, setNotice] = useState(null);
+  const animationsAllowed = useAnimationsAllowed();
 
   // Compare the grids with the previous refresh to find the removed columns, for every player.
   // Adjusting state during render is React's pattern for reacting to a prop change.
@@ -49,7 +50,8 @@ export default function useTableChanges({
         text: `${last.isMe ? 'You' : last.username} removed a column of ${last.value}s!`,
         currentPlayerId,
       });
-      if (!prefersReducedMotion()) {
+      // Without animations, the column is simply gone and the grid closes up at once
+      if (animationsAllowed) {
         setRemovals(queued => [...queued, ...found]);
         setDiscardHidden(hidden => hidden + gridRows * found.length);
       }
