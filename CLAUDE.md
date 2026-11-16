@@ -77,10 +77,9 @@ Frontend tests (Vitest) cover the pure game logic in `src/game/` (`*.test.js` ne
 - `Friendship` (self-join on `User`, status `pending|accepted|blocked`) and `Invitation` (`host`/`guest` users) exist only as models for now, with no endpoints.
 
 ### Frontend routes (`src/App.jsx`)
-- `/` → `pages/home.jsx` (creates a game or joins one with a room code, then navigates to the room)
+- `/` → `pages/Home.jsx` (creates a game or joins one with a room code, then navigates to the room; "My games" lists the user's games)
 - `/auth` → `pages/Auth.jsx`
 - `/game/:room_code` → `pages/GameRoom.jsx` (polls the game every 3 seconds; shows the lobby on the table while `pending`, then `components/GameTable.jsx`)
-- `pages/Dashboard.jsx` exists but is not routed.
 
 ### Frontend structure
 - `src/pages/`: one component per route. `src/components/`: reusable components (`Card`, `PlayerGrid`, `TableLayout` for the green table and the seats around it (a 3 x 3 grid with the current player at the bottom center and 7 places around, one player per place; `USED_SEATS` gives the places used for 2 to 8 players, filled clockwise in turn order; the middle column is always 420 px and the table is as wide as its content), `RoomCode` shown in its middle in the lobby, `TableCenter` for the piles in its middle during the game, `InfoButton` in its bottom right corner during the game, whose bubble shows the game message (what to do, whose turn) with a yellow dot when the message changes, `GameTable`). The table keeps the same size when the game starts: the room code fades out, the piles fade in, then the cards are dealt.

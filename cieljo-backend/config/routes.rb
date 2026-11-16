@@ -1,8 +1,6 @@
 Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
-      root to: "home#index"
-
       # --- Devise: only the sign-up route ---
       # devise_for must stay: it registers the User model with Devise (the sign-up controller needs it) and with
       # devise-jwt. Its own routes are skipped: Devise's sign in/out, password and account edit/delete routes

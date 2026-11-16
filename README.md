@@ -109,7 +109,7 @@ cieljo/
 │                                 # TurnService (draw, swap, discard)
 └── cieljo-frontend/src/
     ├── api.js                    # API_URL and request headers
-    ├── pages/                    # home, Auth, GameRoom
+    ├── pages/                    # Home, Auth, GameRoom
     ├── components/               # Card, PlayerGrid, TableLayout, TableCenter, RoomCode,
     │                             # InfoButton, GameTable
     ├── hooks/                    # useDealAnimation (deal animation), useCardDrag (drag and drop)
