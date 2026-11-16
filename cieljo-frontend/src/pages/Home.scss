@@ -36,15 +36,23 @@
     color: $color-success;
   }
 
-  // The games of the user, to come back to a paused game
+  // The "My games" button, on its own line under Create and Join
+  &__my-games {
+    margin-top: 15px;
+  }
+
+  // The games of the user, to come back to a paused game (opened by "My games")
   &__games {
     @include card;
-    margin-top: 30px;
+    margin-top: 20px;
+    background-color: $color-white;
     text-align: left;
+  }
 
-    h3 {
-      margin-top: 0;
-    }
+  &__games-empty {
+    margin: 0;
+    color: $color-text-muted;
+    text-align: center;
   }
 
   &__games-list {
