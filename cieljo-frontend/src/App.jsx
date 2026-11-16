@@ -1,7 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import RequireAuth from './components/RequireAuth.jsx';
 import Auth from './pages/Auth.jsx';
-import Home from './pages/home.jsx';
+import Home from './pages/Home.jsx';
 import GameRoom from './pages/GameRoom.jsx';
 
 function App() {

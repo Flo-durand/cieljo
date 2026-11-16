@@ -9,21 +9,6 @@ const DISCARD_DELAY_MS = 200; // pause before the discard card leaves the pile
 const DISCARD_FLIGHT_MS = 700; // flight of the discard card, ending edge-on
 const FLIP_MS = 400; // must match the card-flip-in animation in Card.scss
 
-// Cards are dealt one at a time to each player in turn order, like a real deal,
-// then the next card goes onto the discard pile.
-export function buildDeal(players, discardTop) {
-  const cardIds = [];
-  const gridSize = Math.max(0, ...players.map(player => player.grid.length));
-
-  for (let index = 0; index < gridSize; index += 1) {
-    players.forEach(player => {
-      if (player.grid[index]) cardIds.push(player.grid[index].id);
-    });
-  }
-
-  return { cardIds, discardCardId: discardTop?.id };
-}
-
 // Plays the deal: each card flies from the draw pile to its place, found by its data-card-id.
 // Only transform is animated (no layout work). A landed flying card stays in place until React has
 // shown the real card, then it is removed before the next paint, so the card never blinks.
