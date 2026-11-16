@@ -11,6 +11,10 @@ Cieljo is a multiplayer online card game in the style of Skyjo. It is a monorepo
 
 All code, comments, API messages and UI text must be in English. The user communicates in French, so chat replies are in French.
 
+## Deployment
+
+The app is meant to run on Render, described by `render.yaml` at the repository root (a Blueprint: the API as a Ruby web service with `rootDir: cieljo-backend`, one PostgreSQL database, the frontend as a static site with `rootDir: cieljo-frontend` and a rewrite of every path to `/index.html` for React Router). `render.yaml` was validated against Render's JSON schema (https://render.com/schema/render.yaml.json). Production needs `DATABASE_URL`, `SECRET_KEY_BASE`, `JWT_SECRET_KEY`, `APP_HOST`, `FRONTEND_ORIGIN` (API) and `VITE_API_URL` (frontend build). To run the API in production mode on macOS, set `OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES` (Solid Queue forks inside Puma; not needed on Linux).
+
 ## Commands
 
 Backend (run from `cieljo-backend/`):
