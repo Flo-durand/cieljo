@@ -44,6 +44,12 @@ export function playedRounds(players) {
   return [...numbers].sort((a, b) => a - b);
 }
 
+// The points of a round in the score table: "6×2" for a doubled round (12 points saved by the server), so the
+// points of the cards stay readable, otherwise just the points ("6", "-3")
+export function roundPointsText(round) {
+  return round.doubled ? `${round.points / 2}×2` : `${round.points}`;
+}
+
 // Between two rounds: "Next round in 23 s · 2/3 players ready", or "Starting the next round..." once the time is up
 export function nextRoundText(players, secondsLeft) {
   const ready = players.filter(player => player.ready).length;

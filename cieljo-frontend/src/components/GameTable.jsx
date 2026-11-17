@@ -9,9 +9,11 @@ import InfoButton from './InfoButton';
 import PlayerGrid from './PlayerGrid';
 import RoomCode from './RoomCode';
 import RoundScores from './RoundScores';
+import ScoreTable from './ScoreTable';
 import TableCenter from './TableCenter';
 import TableLayout from './TableLayout';
 import { cardLabel, discardPileLabel, drawPileLabel } from '../game/cardLabel';
+import { playedRounds } from '../game/roundScores';
 import { faceUpCount, tableMessage } from '../game/tableMessage';
 
 // rules are the rules of the game from the API (see rulesFromApi in src/game/rules.js).
@@ -217,7 +219,12 @@ export default function GameTable({
             me, players, initialReveal, initialRevealCount: rules.initialRevealCount, currentPlayerId, dealing,
             hand: myHand, handSelected, notice, lastRound, roundEnderId, roundScored, roundOver, roundNumber,
           })}
-        />
+        >
+          {/* The total of each player (the points of the round in progress are under the names) */}
+          {playedRounds(players).length > 0
+            ? <ScoreTable players={players} caption="Scores of the game, the lowest total wins" light totalOnly />
+            : <p className="info-button__note">No round scored yet.</p>}
+        </InfoButton>
       )}
     >
       <TableCenter

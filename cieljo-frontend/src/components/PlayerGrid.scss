@@ -22,6 +22,15 @@
     transition: background-color 0.2s, color 0.2s;
   }
 
+  // The points of the round so far, right under the name (the negative margin cancels the gap)
+  &__points {
+    margin-top: -8px;
+    font-size: 12px;
+    line-height: 14px;
+    opacity: 0.85;
+    font-variant-numeric: tabular-nums;
+  }
+
   // Each card is placed at its row and column by PlayerGrid.jsx, which also sets the number of columns
   &__cards {
     display: grid;

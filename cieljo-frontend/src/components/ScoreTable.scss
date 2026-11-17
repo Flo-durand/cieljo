@@ -1,0 +1,84 @@
+@use '../styles/variables' as *;
+@use '../styles/mixins' as *;
+
+// On the green table by default (sizes follow the cards); --light in the white info bubble (fixed sizes)
+.score-table {
+  max-width: 100%;
+  overflow-x: auto;
+
+  &__caption {
+    @include visually-hidden;
+  }
+
+  &__table {
+    border-collapse: collapse;
+    font-size: max(12px, #{scaled(14px)});
+
+    th,
+    td {
+      padding: scaled(1px) scaled(8px);
+      text-align: left;
+    }
+
+    thead th {
+      font-weight: normal;
+      opacity: 0.75;
+    }
+  }
+
+  &__name {
+    max-width: scaled(120px);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  &__points {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__total {
+    font-weight: bold;
+  }
+
+  &__round abbr {
+    text-decoration: none;
+  }
+
+  // A doubled round ("6×2"): bold only, in the color of its row, so it never depends on a color to be seen
+  &__doubled {
+    font-weight: bold;
+  }
+
+  &__ready {
+    text-align: center;
+  }
+
+  &__row--winner {
+    color: $color-highlight;
+  }
+
+  &__row--me &__name {
+    text-decoration: underline;
+  }
+
+  // In the info bubble: dark text on white, where the yellow highlight would not be readable
+  &--light &__table {
+    font-size: 13px;
+    font-weight: normal;
+
+    th,
+    td {
+      padding: 1px 6px;
+    }
+  }
+
+  &--light &__name {
+    max-width: 110px;
+  }
+
+  &--light &__row--winner {
+    color: $color-success;
+  }
+}

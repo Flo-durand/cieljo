@@ -1,5 +1,4 @@
 @use '../styles/variables' as *;
-@use '../styles/mixins' as *;
 
 // Over the piles in the middle of the table (see TableCenter.scss), sized to hold up to 8 players
 .round-scores {
@@ -22,76 +21,11 @@
     color: $color-highlight;
   }
 
-  &__caption {
-    @include visually-hidden;
-  }
-
-  // Wide enough for the name, the total and a few rounds; more rounds scroll sideways
-  &__scroll {
-    max-width: 100%;
-    overflow-x: auto;
-  }
-
-  &__table {
-    border-collapse: collapse;
-    font-size: max(12px, #{scaled(14px)});
-
-    th,
-    td {
-      padding: scaled(1px) scaled(8px);
-      text-align: left;
-    }
-
-    thead th {
-      font-weight: normal;
-      opacity: 0.75;
-    }
-  }
-
-  &__name {
-    max-width: scaled(120px);
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-
-  &__points {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-  }
-
-  &__total {
-    font-weight: bold;
-  }
-
-  &__round abbr {
-    text-decoration: none;
-  }
-
-  &__doubled {
-    margin-left: scaled(2px);
-    color: $color-highlight;
-    font-size: 0.8em;
-    font-weight: bold;
-  }
-
-  &__ready {
-    text-align: center;
-  }
-
   &__next {
     margin: 0;
     font-size: max(11px, #{scaled(12px)});
     opacity: 0.85;
     font-variant-numeric: tabular-nums;
-  }
-
-  &__row--winner {
-    color: $color-highlight;
-  }
-
-  &__row--me &__name {
-    text-decoration: underline;
   }
 
   &__action {

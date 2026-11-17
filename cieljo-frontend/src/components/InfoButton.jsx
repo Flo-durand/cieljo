@@ -1,10 +1,11 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import './InfoButton.scss';
 
-// An "i" button that shows the game message in a bubble above it.
-// A yellow dot appears on the button when the message changes, until the player opens the bubble.
+// An "i" button that shows the game message in a bubble above it, with children below it (the scores of the game).
+// A yellow dot appears on the button when the message changes, until the player opens the bubble (a change in
+// children does not light it).
 // The bubble closes with a second click, with Escape, or with a click anywhere else.
-export default function InfoButton({ message }) {
+export default function InfoButton({ message, children }) {
   const [open, setOpen] = useState(false);
   // The last message the player has seen in the bubble
   const [seenMessage, setSeenMessage] = useState(null);
@@ -37,7 +38,8 @@ export default function InfoButton({ message }) {
     <div className="info-button" ref={rootRef}>
       {open && (
         <div id={bubbleId} className="info-button__bubble">
-          {message || 'Nothing to do for now.'}
+          <p className="info-button__message">{message || 'Nothing to do for now.'}</p>
+          {children && <div className="info-button__extra">{children}</div>}
         </div>
       )}
 
