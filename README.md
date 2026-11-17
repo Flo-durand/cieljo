@@ -60,9 +60,11 @@ By default the frontend calls the API at `http://localhost:3000/api/v1`, and the
 
    The replaced card goes face up onto the discard pile, then the turn passes to the next player. The drag and drop works with a mouse, a finger or a pen, and the whole game can be played with the keyboard (Tab, then Enter) or a screen reader, which names every card.
 7. When a column of your grid holds **3 face-up cards of the same value**, it is removed: its cards fly to the discard pile and the remaining columns close up.
-8. When a player has revealed **all the cards left in their grid**, the last round begins: every other player plays one more turn. Then all the cards are revealed and each player scores the total of their grid (removed columns no longer count). If the player who ended the round does not have the lowest score (a tie is not enough), their points are doubled when positive. The scores show in the middle of the table, with the points of every round and each player's total.
+8. When a player has revealed **all the cards left in their grid**, the last round begins: every other player plays one more turn. Then all the cards are revealed and each player scores the total of their grid (removed columns no longer count). If the player who ended the round does not have the lowest score (a tie is not enough), their points are doubled when positive (shown as `6×2`). The scores show in the middle of the table, with the points of every round and each player's total.
+
+   During a round, the points of your face-up cards show under each player's name.
 9. Between two rounds, click **Ready**: the next round starts once every player is ready, or after 30 seconds anyway. A new deck is dealt, everyone reveals 2 cards, and the player who ended the previous round plays first. When a player reaches **100 points**, the game is over: the lowest total wins.
-10. Click the **"i" button** in the bottom right corner of the table to see what to do and whose turn it is. A yellow dot appears on it when the message changes. The name of the player whose turn it is is highlighted in yellow.
+10. Click the **"i" button** in the bottom right corner of the table to see what to do and whose turn it is. A yellow dot appears on it when the message changes. From the second round on, the bubble also shows each player's total score. The name of the player whose turn it is is highlighted in yellow.
 11. To leave, click **Leave the table**. In the lobby you simply leave (you can join again with the code). During a game you can **pause it** (your seat waits for you) or **quit it for good** (you forfeit: your cards leave the game and the others go on). When only one player is left, they win. Between two rounds, leaving works the same way. After the final scores, going back home keeps the game on screen for the others. Find your paused games with the **My games** button on the home page.
 
 Games nobody has played for 24 hours are deleted automatically.
@@ -118,9 +120,10 @@ cieljo/
     ├── api.js                    # API_URL and request headers
     ├── pages/                    # Home, Auth, GameRoom
     ├── components/               # Card, PlayerGrid, TableLayout, TableCenter, RoomCode,
-    │                             # InfoButton, LeaveGameDialog, GameTable
+    │                             # InfoButton, RoundScores, ScoreTable, LeaveGameDialog, GameTable
     ├── game/                     # pure game logic, tested with Vitest: seating, table changes,
-    │                             # info message, deal order, rules from the API, card labels
+    │                             # info message, deal order, rules from the API, card labels,
+│                             # round scores, live points
     ├── hooks/                    # useDealAnimation, useCardDrag, useThrowToDiscard, useTableChanges
     ├── utils/                    # flyCard (cards flying over the table), prefersReducedMotion
     └── styles/                   # shared SCSS variables and mixins
@@ -194,6 +197,13 @@ bin/rubocop          # lint
 bin/ci               # full CI: setup, rubocop, bundler-audit, brakeman, tests, seeds (passes on main)
 ```
 
+To test a game by hand without playing every turn (development only; quote the task name in zsh):
+
+```bash
+bin/rails "dev:reveal[ABCD]"      # reveal every grid card but one per player: the next move can end the round
+bin/rails "dev:scores[ABCD,95]"   # set every player's total score (the round history is not changed)
+```
+
 Frontend (from `cieljo-frontend/`):
 
 ```bash
@@ -216,6 +226,7 @@ npm run build
 - [x] Column removal (3 identical face-up cards), with its animation
 - [x] End of the round and scoring
 - [x] Several rounds, until a player reaches 100 points
+- [x] Live points of the round under each name, total scores in the info bubble
 - [x] Up to 8 players, seated around a table of fixed width
 - [x] A table that adapts to the size of the screen (computers and tablets)
 - [ ] A layout for phones in portrait
