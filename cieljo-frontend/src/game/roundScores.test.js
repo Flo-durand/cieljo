@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  lastRoundText, nextRoundText, playedRounds, roundPointsOf, roundRanking, winnersText,
+  lastRoundText, nextRoundText, playedRounds, roundPointsOf, roundPointsText, roundRanking, winnersText,
 } from './roundScores';
 import { players } from './testHelpers';
 
@@ -96,5 +96,16 @@ describe('nextRoundText', () => {
 
   it('says the next round is starting once the time is up', () => {
     expect(nextRoundText(ready([true, true]), 0)).toBe('Starting the next round... · 2/2 players ready');
+  });
+});
+
+describe('roundPointsText', () => {
+  it('shows the points of the cards times 2 for a doubled round', () => {
+    expect(roundPointsText({ points: 12, doubled: true })).toBe('6×2');
+  });
+
+  it('shows the points alone otherwise', () => {
+    expect(roundPointsText({ points: 6, doubled: false })).toBe('6');
+    expect(roundPointsText({ points: -3, doubled: false })).toBe('-3');
   });
 });
