@@ -2,9 +2,10 @@
 
 :root {
   // The width of every card of the game, following the size of the screen: the table (about 21 card widths
-  // wide and 18 card widths plus 160 px high) fits in the window, between 28 px and 64 px wide cards.
+  // wide and 18 card widths plus 200 px high, with the names and points of the seats) fits in the window,
+  // between 28 px and 64 px wide cards.
   // Every other size of the table is derived from it (see scaled() in _variables.scss).
-  --card-width: clamp(28px, min((100vw - 40px) / 21, (100vh - 160px) / 18), 64px);
+  --card-width: clamp(28px, min((100vw - 40px) / 21, (100vh - 200px) / 18), 64px);
 }
 
 body {

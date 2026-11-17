@@ -2,12 +2,13 @@ import { useLayoutEffect, useRef } from 'react';
 import { useAnimationsAllowed } from '../contexts/AnimationsContext';
 import Card from './Card';
 import { cardLabel, gridLabel } from '../game/cardLabel';
+import { livePoints, pointsText } from '../game/liveScores';
 import './PlayerGrid.scss';
 
 const CLOSE_MS = 400; // the remaining columns slide together after a column is removed
 
-// A player's grid of cards with their name, in a seat as wide as a full grid of 4 columns, so a grid that
-// loses a column never moves the players next to it.
+// A player's grid of cards with their name and the points of the round so far (once the cards are dealt), in a
+// seat as wide as a full grid of 4 columns, so a grid that loses a column never moves the players next to it.
 // Each card is placed at its row and column. A removed column leaves no gap: the remaining columns close up,
 // centered, and slide to their new place (FLIP: the cards are drawn at their new place, moved back to the old
 // one with transform, then animated to the new one).
@@ -71,6 +72,10 @@ export default function PlayerGrid({
         {player.username}
         {player.current_user && ' (you)'}
       </div>
+      {/* The points of the round so far: the face-up cards (the total of the game is in the info bubble) */}
+      {player.grid.length > 0 && (
+        <div className="player-grid__points">{pointsText(livePoints(player))}</div>
+      )}
       <div className="player-grid__cards" role="group" aria-label={gridLabel(player)} style={{ gridTemplateColumns: `repeat(${columns.length || gridColumns}, auto)` }}>
         {cards.length > 0
           ? cards.map(card => (
