@@ -79,10 +79,13 @@ Rails.application.configure do
   config.active_record.attributes_for_inspect = [ :id ]
 
   # Enable DNS rebinding protection and other `Host` header attacks: only the API's own address is accepted.
-  # APP_HOST gives it, e.g. "cieljo-api.onrender.com" (several ones separated by commas). It is required: an
-  # empty list would turn the protection off.
-  config.hosts = ENV.fetch("APP_HOST") { raise "APP_HOST must be set in production (the address of the API)" }
-                    .split(",").map(&:strip)
+  # APP_HOST gives it, e.g. "cieljo-api.example.com" (several ones separated by commas, for a custom domain);
+  # without it, RENDER_EXTERNAL_HOSTNAME, the address Render gives the service (e.g. "cieljo-api.onrender.com").
+  # One of them is required: an empty list would turn the protection off.
+  app_hosts = ENV["APP_HOST"].presence || ENV["RENDER_EXTERNAL_HOSTNAME"].presence
+  raise "APP_HOST (or RENDER_EXTERNAL_HOSTNAME on Render) must be set in production (the address of the API)" unless app_hosts
+
+  config.hosts = app_hosts.split(",").map(&:strip)
 
   # Skip DNS rebinding protection for the default health check endpoint.
   config.host_authorization = { exclude: ->(request) { request.path == "/up" } }

@@ -165,7 +165,7 @@ Check the current prices on Render before creating the services.
    - `VITE_API_URL` (frontend): the address of the API, for example `https://cieljo-api.onrender.com/api/v1`.
 4. Create the Blueprint. Render creates the database, builds both parts, prepares the database (`bin/rails db:prepare`) and starts the API.
 5. If Render gave the services other addresses (a name already taken gets a suffix), update `FRONTEND_ORIGIN` in the API's **Environment** and `VITE_API_URL` in the frontend's **Environment**, then redeploy the frontend: `VITE_API_URL` is built into its JavaScript.
-6. Check that `https://<api address>/up` answers with a green page, then open the frontend and create an account.
+6. From `cieljo-backend/`, run `bin/smoke <API address> <frontend address>` (for example `bin/smoke https://cieljo-api.onrender.com https://cieljo.onrender.com`). It checks the health check, CORS, sign-up, login, a game, logout and the frontend's pages and API address, and names the setting to fix when something fails. Each run leaves a `smoke...` account in the database, and sign-up allows 5 runs an hour.
 
 On the first build of the frontend, check in the log that the published folder is `dist`.
 
@@ -176,16 +176,17 @@ On the first build of the frontend, check in the log that the published folder i
 | `DATABASE_URL` | API | Render, from the database |
 | `SECRET_KEY_BASE` | API | Render, generated once |
 | `JWT_SECRET_KEY` | API | Render, generated once (changing it logs every player out) |
-| `APP_HOST` | API | Render, the API's own address (only requests to it are accepted) |
+| `RENDER_EXTERNAL_HOSTNAME` | API | Render, the API's own address (only requests to it are accepted) |
+| `APP_HOST` | API | You, only for a custom domain (replaces `RENDER_EXTERNAL_HOSTNAME`; comma-separated, include the `onrender.com` address to keep it) |
 | `FRONTEND_ORIGIN` | API | You (comma-separated if there are several) |
 | `SOLID_QUEUE_IN_PUMA` | API | `render.yaml` (background jobs run inside the web process) |
 | `VITE_API_URL` | Frontend | You, built into the JavaScript |
 
-Without `DATABASE_URL`, `JWT_SECRET_KEY`, `APP_HOST` or `FRONTEND_ORIGIN`, the API refuses to start in production with a message naming the missing variable.
+Without `DATABASE_URL`, `JWT_SECRET_KEY`, `FRONTEND_ORIGIN`, or one of `APP_HOST` and `RENDER_EXTERNAL_HOSTNAME`, the API refuses to start in production with a message naming the missing variable.
 
 ### Next deployments
 
-Every merge into `main` deploys again, each part only when its folder changes. Before the new version of the API starts, `bin/rails db:prepare` applies the new migrations; if it fails, the previous version stays online.
+Every merge into `main` deploys again, each part only when its folder changes. Before the new version of the API starts, `bin/rails db:prepare` applies the new migrations; if it fails, the previous version stays online. Run `bin/smoke` again after a deploy to check it.
 
 ## Development
 

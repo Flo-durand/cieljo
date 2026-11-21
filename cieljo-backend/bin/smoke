@@ -1,0 +1,174 @@
+#!/usr/bin/env ruby
+# Checks a deployed Cieljo from the outside, like a browser would, after each deploy.
+#
+#   bin/smoke https://cieljo-api.onrender.com https://cieljo.onrender.com
+#
+# The first address is the API (without /api/v1), the second the frontend. The script only uses Ruby's
+# standard library, so it runs anywhere, without the app's gems or database.
+#
+# It checks the health check, CORS (the frontend allowed, another origin refused), sign-up, login, the
+# logged-in user, creating, reading and leaving a game (an empty lobby is deleted), logout, then that the
+# frontend serves its pages, its routes (/auth, /game/ABCD) and a JavaScript built with the right API address.
+#
+# Each run signs up a new "smoke..." account, which stays in the database (accounts cannot be deleted yet).
+# Sign-up is limited to 5 per hour for an IP address, so the script can run 5 times an hour.
+
+require "json"
+require "net/http"
+require "securerandom"
+require "uri"
+
+if ARGV.size != 2
+  warn "Usage: bin/smoke <API address> <frontend address>"
+  warn "Example: bin/smoke https://cieljo-api.onrender.com https://cieljo.onrender.com"
+  exit 2
+end
+
+API = ARGV[0].chomp("/")
+FRONTEND = ARGV[1].chomp("/")
+API_V1 = "#{API}/api/v1"
+
+$failures = 0
+
+def check(label)
+  result = yield
+  if result == true
+    puts "  ok    #{label}"
+  else
+    $failures += 1
+    puts "  FAIL  #{label}#{": #{result}" if result.is_a?(String)}"
+  end
+rescue StandardError => e
+  $failures += 1
+  puts "  FAIL  #{label}: #{e.class}: #{e.message}"
+end
+
+def request(method, url, body: nil, headers: {})
+  uri = URI(url)
+  request = Net::HTTP.const_get(method.capitalize).new(uri)
+  # A production server running on this computer (http://) is not behind Render's HTTPS proxy: say the request
+  # came over HTTPS, otherwise Rails redirects it (force_ssl).
+  request["X-Forwarded-Proto"] = "https" if uri.scheme == "http"
+  headers.each { |name, value| request[name] = value }
+  if body
+    request["Content-Type"] = "application/json"
+    request.body = JSON.generate(body)
+  end
+  Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: 30, read_timeout: 60) do |http|
+    http.request(request)
+  end
+end
+
+def json(response)
+  JSON.parse(response.body)
+rescue JSON::ParserError
+  {}
+end
+
+def expect_status(response, code)
+  response.code.to_i == code || "status #{response.code}, expected #{code}: #{response.body.to_s[0, 200]}"
+end
+
+suffix = SecureRandom.hex(4)
+user = { email: "smoke-#{suffix}@example.com", password: SecureRandom.hex(12), username: "smoke#{suffix}" }
+token = nil
+room_code = nil
+
+puts "API #{API}"
+
+check("GET /up answers 200") { expect_status(request(:get, "#{API}/up"), 200) }
+
+check("CORS allows the frontend (#{FRONTEND})") do
+  response = request(:options, "#{API_V1}/auth/login", headers: {
+    "Origin" => FRONTEND,
+    "Access-Control-Request-Method" => "POST",
+    "Access-Control-Request-Headers" => "content-type,authorization"
+  })
+  allowed = response["Access-Control-Allow-Origin"]
+  allowed == FRONTEND || "Access-Control-Allow-Origin is #{allowed.inspect} (check FRONTEND_ORIGIN on the API)"
+end
+
+check("CORS refuses another origin") do
+  response = request(:options, "#{API_V1}/auth/login", headers: {
+    "Origin" => "https://not-cieljo.example.com",
+    "Access-Control-Request-Method" => "POST"
+  })
+  response["Access-Control-Allow-Origin"].nil? || "Access-Control-Allow-Origin is #{response["Access-Control-Allow-Origin"].inspect}"
+end
+
+check("sign-up of #{user[:username]}") do
+  expect_status(request(:post, "#{API_V1}/users", body: { user: user }), 200)
+end
+
+check("login") do
+  response = request(:post, "#{API_V1}/auth/login", body: { user: user.slice(:email, :password) })
+  token = json(response).dig("data", "token")
+  expect_status(response, 200) == true && token.to_s.start_with?("Bearer ") ? true : "status #{response.code}, no token"
+end
+
+auth = -> { { "Authorization" => token.to_s, "Origin" => FRONTEND } }
+
+check("GET /me returns the user, with the CORS header") do
+  response = request(:get, "#{API_V1}/me", headers: auth.call)
+  next expect_status(response, 200) unless response.code == "200"
+  next "username is #{json(response).dig("data", "username").inspect}" unless json(response).dig("data", "username") == user[:username]
+
+  response["Access-Control-Allow-Origin"] == FRONTEND || "Access-Control-Allow-Origin is #{response["Access-Control-Allow-Origin"].inspect}"
+end
+
+check("create a game") do
+  response = request(:post, "#{API_V1}/games", headers: auth.call)
+  room_code = json(response).dig("data", "room_code")
+  expect_status(response, 201) == true && room_code ? true : "status #{response.code}, no room code"
+end
+
+if room_code
+  check("GET /games/#{room_code}") { expect_status(request(:get, "#{API_V1}/games/#{room_code}", headers: auth.call), 200) }
+  check("leave the game (the empty lobby is deleted)") do
+    expect_status(request(:post, "#{API_V1}/games/#{room_code}/leave", headers: auth.call), 200)
+  end
+end
+
+check("logout, then the token is refused") do
+  logout = request(:delete, "#{API_V1}/auth/logout", headers: auth.call)
+  next expect_status(logout, 200) unless logout.code == "200"
+
+  expect_status(request(:get, "#{API_V1}/me", headers: auth.call), 401)
+end
+
+puts "Frontend #{FRONTEND}"
+
+home = nil
+check("GET / serves the page") do
+  home = request(:get, "#{FRONTEND}/")
+  next expect_status(home, 200) unless home.code == "200"
+
+  home.body.include?('id="root"') || "no <div id=\"root\"> in the page"
+end
+
+check("the JavaScript calls #{API_V1}") do
+  script = home&.body&.[](/<script[^>]+src="([^"]+\.js)"/, 1)
+  next "no script in the page" unless script
+
+  javascript = request(:get, URI.join("#{FRONTEND}/", script).to_s)
+  next expect_status(javascript, 200) unless javascript.code == "200"
+
+  javascript.body.include?(API_V1) || "the API address is not in #{script} (check VITE_API_URL, then rebuild the frontend)"
+end
+
+%w[/auth /game/ABCD].each do |path|
+  check("GET #{path} serves the same page (React Router)") do
+    response = request(:get, "#{FRONTEND}#{path}")
+    next expect_status(response, 200) unless response.code == "200"
+
+    response.body == home&.body || "the page differs from / (check the rewrite rule of the static site)"
+  end
+end
+
+puts
+if $failures.zero?
+  puts "Everything works."
+else
+  puts "#{$failures} check(s) failed."
+  exit 1
+end
