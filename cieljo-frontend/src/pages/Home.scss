@@ -36,6 +36,13 @@
     color: $color-success;
   }
 
+  // "My account" and "Log out", side by side under the panel
+  &__account {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+
   // The "My games" button, on its own line under Create and Join
   &__my-games {
     margin-top: 15px;
