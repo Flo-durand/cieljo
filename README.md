@@ -89,6 +89,8 @@ All routes are under `/api/v1`. Every endpoint except sign-up and login needs an
 | `POST` | `/auth/login` | Log in with `{ user: { email, password } }`. Returns the token in `data.token`; 401 for wrong credentials, 400 without credentials (10 attempts per 3 minutes per IP address) |
 | `DELETE` | `/auth/logout` | Log out: revokes every token of the user, on all their devices |
 | `GET` | `/me` | The logged-in user (`id`, `email`, `username`) |
+| `PATCH` | `/me` | Edit the account (`username`, `email`, `password`; `current_password` for a new email or password). A new password logs out every other device and returns a new token |
+| `DELETE` | `/me` | Delete the account (`current_password`): the user leaves all their games first |
 | `GET` | `/games` | Your games in the lobby, in progress or between two rounds, most recently active first, with whose turn it is |
 | `POST` | `/games` | Create a game room. The current user becomes the host (10 per minute per user) |
 | `GET` | `/games/:room_code` | Get a game, its players and their grids, the piles (with the last 5 discarded cards) and the current player (players only), the round number, each player's total and points per round, and between two rounds who is ready and the seconds left. The values of face-down cards are never sent |
@@ -101,9 +103,9 @@ All routes are under `/api/v1`. Every endpoint except sign-up and login needs an
 | `POST` | `/games/:room_code/discard` | Throw a card drawn from the draw pile and reveal a face-down grid card `{ card_id }`. Removes a completed column, returned as `removed_column`. Ends the turn |
 | `POST` | `/games/:room_code/ready` | Between two rounds, you are ready for the next one. It starts once every player is ready, or on any request after 30 seconds |
 
-Account routes: only sign-up (`POST /users`), login (`POST /auth/login`), logout (`DELETE /auth/logout`) and the current user (`GET /me`) exist. Devise's other routes (sign in/out, password, account edit or delete) are not exposed because they do not work with the JWT flow; editing or deleting an account and "forgot password" emails are planned as dedicated endpoints.
+Account routes: sign-up (`POST /users`), login (`POST /auth/login`), logout (`DELETE /auth/logout`) and the current account (`GET`, `PATCH`, `DELETE /me`). Devise's other routes (sign in/out, password, account edit or delete) are not exposed because they do not work with the JWT flow; "forgot password" emails are planned as dedicated endpoints.
 
-**Rate limits**: logins (10 per 3 minutes per IP address), sign-ups (5 per hour per IP address) and new games (`POST /games`, 10 per minute per user) are limited. Over the limit, the API answers `429 Too Many Requests` with a JSON error.
+**Rate limits**: logins (10 per 3 minutes per IP address), sign-ups (5 per hour per IP address) new games (`POST /games`, 10 per minute per user) and account edits and deletions (`PATCH`/`DELETE /me`, 10 per 3 minutes per user) are limited. Over the limit, the API answers `429 Too Many Requests` with a JSON error.
 
 ## Project structure
 
