@@ -5,8 +5,8 @@ Rails.application.routes.draw do
       # devise_for must stay: it registers the User model with Devise (the sign-up controller needs it) and with
       # devise-jwt. Its own routes are skipped: Devise's sign in/out, password and account edit/delete routes
       # rely on Devise sessions, not on our JWT flow, so they could not work here (401 or 500). Account
-      # edit/delete and "forgot password" emails are planned as our own endpoints using current_user (see
-      # CLAUDE.md); the User model keeps every Devise module for them.
+      # edit/delete are our own endpoints (PATCH / DELETE /api/v1/me) and "forgot password" emails are planned
+      # the same way (see CLAUDE.md); the User model keeps every Devise module for them.
       devise_for :users, skip: %i[sessions passwords registrations], defaults: { format: :json }
       # Inside the api/v1 namespace, Devise names this mapping :api_v1_user (not :user)
       devise_scope :api_v1_user do
@@ -19,8 +19,9 @@ Rails.application.routes.draw do
       # Revokes every token of the logged-in user (all their devices)
       delete "auth/logout", to: "auth#logout", defaults: { format: :json }
 
-      # GET /api/v1/me returns the logged-in user (and tells the frontend whether the session is still valid)
-      resource :me, only: :show, controller: "me"
+      # GET /api/v1/me returns the logged-in user (and tells the frontend whether the session is still valid);
+      # PATCH edits the account, DELETE deletes it
+      resource :me, only: %i[show update destroy], controller: "me"
 
       # --- Game routes ---
       # GET /api/v1/games/:room_code returns the game and its players

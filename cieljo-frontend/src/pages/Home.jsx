@@ -237,9 +237,14 @@ export default function Home() {
             )}
           </div>
 
-          <button onClick={handleLogout} className="btn btn--danger">
-            Log out
-          </button>
+          <div className="home__account">
+            <button onClick={() => navigate('/account')} className="btn btn--secondary">
+              My account
+            </button>
+            <button onClick={handleLogout} className="btn btn--danger">
+              Log out
+            </button>
+          </div>
         </div>
       )}
     </div>
