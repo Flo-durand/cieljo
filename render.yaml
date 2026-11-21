@@ -45,12 +45,8 @@ services:
       # Signs the login tokens: a random value generated once by Render. Changing it logs everybody out.
       - key: JWT_SECRET_KEY
         generateValue: true
-      # The address of the API itself, checked on every request (config/environments/production.rb)
-      - key: APP_HOST
-        fromService:
-          type: web
-          name: cieljo-api
-          envVarKey: RENDER_EXTERNAL_HOSTNAME
+      # The address of the API itself, checked on every request, comes from RENDER_EXTERNAL_HOSTNAME, which Render
+      # sets on every web service (config/environments/production.rb). Set APP_HOST only to add a custom domain.
       # The address of the frontend allowed to call the API (CORS), e.g. https://cieljo.onrender.com.
       # Render asks for it when the Blueprint is created; it can be changed later in the dashboard.
       - key: FRONTEND_ORIGIN
